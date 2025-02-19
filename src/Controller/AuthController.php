@@ -9,25 +9,22 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class HomeController extends AbstractController
+class AuthController extends AbstractController
 {
     public function __construct(
         private readonly SpaceTraderAPI $spaceTraderApi,
     ) {
     }
 
-    #[Route('/', 'app.index')]
-    public function indexAction(Request $request): Response
+    #[Route('/', 'app.register')]
+    public function registerAction(Request $request): Response
     {
-        $registerAgentForm = $this->createFormBuilder()
-            ->add('symbol', TextType::class)
-            ->add('faction', ChoiceType::class, ['choices' => ['COSMIC' => 'COSMIC']])
-            ->add('submit', SubmitType::class)
-            ->getForm();
+        $registerAgentForm = $this->createRegisterForm();
 
         $registerAgentForm->handleRequest($request);
 
@@ -38,26 +35,14 @@ class HomeController extends AbstractController
             // Until there is a way to store agents we use the session
             $request->getSession()->set('agentToken', $agent['data']['token']);
 
-            return $this->redirectToRoute('app.index');
-        }
-
-        $agent = null;
-        $contracts = null;
-
-        if ($request->getSession()->has('agentToken')) {
-            $agentToken = $request->getSession()->get('agentToken');
-
-            $agent = $this->spaceTraderApi->loadAgent($agentToken);
-            $contracts = $this->spaceTraderApi->loadContracts($agentToken);
+            return $this->redirectToRoute('app.agent.detail');
         }
 
         $parameters = [
             'registerAgentForm' => $registerAgentForm,
-            'agent' => $agent,
-            'contracts' => $contracts,
         ];
 
-        return $this->render('base.html.twig', $parameters);
+        return $this->render('register.html.twig', $parameters);
     }
 
     #[Route('/logout', 'app.logout')]
@@ -65,6 +50,15 @@ class HomeController extends AbstractController
     {
         $request->getSession()->remove('agentToken');
 
-        return $this->redirectToRoute('app.index');
+        return $this->redirectToRoute('app.register');
+    }
+
+    private function createRegisterForm(): FormInterface
+    {
+        return $this->createFormBuilder()
+            ->add('symbol', TextType::class)
+            ->add('faction', ChoiceType::class, ['choices' => ['COSMIC' => 'COSMIC']])
+            ->add('submit', SubmitType::class)
+            ->getForm();
     }
 }

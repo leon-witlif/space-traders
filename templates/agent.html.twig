@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div class="my-5">
+        <strong>Welcome back {{ agent.symbol }}</strong><br><br>
+
+        <span>Available credits: {{ agent.credits }}</span><br>
+        <span>Available ships: {{ agent.shipCount }}</span><br><br>
+
+        <strong>Your contracts</strong><br><br>
+
+        {% for contract in contracts %}
+            <span>Type: {{ contract.type }}</span><br>
+            <span>Reward: {{ contract.terms['payment']['onAccepted'] }} credits immediately, {{ contract.terms['payment']['onFulfilled'] }} credits on fulfillment</span><br>
+            <span>Expires on: {{ contract.expiration|date('d.m.Y H:i:s') }}</span><br>
+            {% if contract.accepted %}
+                <strong>Contract is underway</strong>
+            {% else %}
+                <a href="{{ path('app.contract.accept', {'contract': contract.id}) }}">Accept contract</a>
+            {% endif %}
+            <br><br>
+            <a href="{{ path('app.logout') }}">Terminate agent</a>
+        {% endfor %}
+    </div>
+{% endblock %}

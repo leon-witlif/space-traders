@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/contract/', 'app.contract.')]
+#[Route('/contract', 'app.contract')]
 class ContractController extends AbstractController
 {
     public function __construct(
@@ -18,7 +18,7 @@ class ContractController extends AbstractController
     ) {
     }
 
-    #[Route('accept/{contract}', 'accept')]
+    #[Route('/accept/{contract}', '.accept')]
     public function acceptAction(Request $request): Response
     {
         $agent = $request->getSession()->get('agentToken');
@@ -26,6 +26,6 @@ class ContractController extends AbstractController
 
         $this->spaceTraderApi->acceptContract($agent, $contract);
 
-        return $this->redirectToRoute('app.index');
+        return $this->redirectToRoute('app.agent.detail');
     }
 }
