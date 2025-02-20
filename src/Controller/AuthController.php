@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\SpaceTrader\APIClient as SpaceTraderAPI;
+use App\Handler\AgentHandler;
+use App\Storage\AgentStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
@@ -17,11 +18,23 @@ use Symfony\Component\Routing\Attribute\Route;
 class AuthController extends AbstractController
 {
     public function __construct(
-        private readonly SpaceTraderAPI $spaceTraderApi,
+        private readonly AgentHandler $agentHandler,
+        private readonly AgentStorage $agentStorage,
     ) {
     }
 
-    #[Route('/', 'app.register')]
+    #[Route('/', 'app.auth.index')]
+    public function indexAction(): Response
+    {
+        $parameters = [
+            'registerAgentForm' => $this->createRegisterForm(),
+            'loginAgentForm' => $this->createLoginForm(),
+        ];
+
+        return $this->render('auth.html.twig', $parameters);
+    }
+
+    #[Route('/register', 'app.auth.register', methods: ['POST'])]
     public function registerAction(Request $request): Response
     {
         $registerAgentForm = $this->createRegisterForm();
@@ -31,34 +44,60 @@ class AuthController extends AbstractController
         if ($registerAgentForm->isSubmitted() && $registerAgentForm->isValid()) {
             $data = $registerAgentForm->getData();
 
-            $agent = $this->spaceTraderApi->registerAgent($data['symbol'], $data['faction']);
-            // Until there is a way to store agents we use the session
-            $request->getSession()->set('agentToken', $agent['data']['token']);
+            $this->agentHandler->register($data['symbol'], $data['faction']);
+        }
+
+        return $this->redirectToRoute('app.auth.index');
+    }
+
+    #[Route('/login', 'app.auth.login', methods: ['POST'])]
+    public function loginAction(Request $request): Response
+    {
+        $loginAgentForm = $this->createLoginForm();
+
+        $loginAgentForm->handleRequest($request);
+
+        if ($loginAgentForm->isSubmitted() && $loginAgentForm->isValid()) {
+            $data = $loginAgentForm->getData();
+
+            $agent = array_find($this->agentStorage->getAgents(), fn (array $agent) => $agent['symbol'] === $data['symbol']);
+
+            $request->getSession()->set('agentToken', $agent['token']);
 
             return $this->redirectToRoute('app.agent.detail');
         }
 
-        $parameters = [
-            'registerAgentForm' => $registerAgentForm,
-        ];
-
-        return $this->render('register.html.twig', $parameters);
+        return $this->render('app.auth.index');
     }
 
-    #[Route('/logout', 'app.logout')]
+    #[Route('/logout', 'app.auth.logout')]
     public function logoutAction(Request $request): Response
     {
         $request->getSession()->remove('agentToken');
 
-        return $this->redirectToRoute('app.register');
+        return $this->redirectToRoute('app.auth.index');
     }
 
     private function createRegisterForm(): FormInterface
     {
-        return $this->createFormBuilder()
+        return $this->createFormBuilder(options: ['action' => $this->generateUrl('app.auth.register')])
             ->add('symbol', TextType::class)
             ->add('faction', ChoiceType::class, ['choices' => ['COSMIC' => 'COSMIC']])
-            ->add('submit', SubmitType::class)
+            ->add('submit', SubmitType::class, ['label' => 'Register'])
+            ->getForm();
+    }
+
+    private function createLoginForm(): FormInterface
+    {
+        $agentChoices = [];
+
+        foreach ($this->agentStorage->getAgents() as $agent) {
+            $agentChoices[$agent['symbol']] = $agent['symbol'];
+        }
+
+        return $this->createFormBuilder(options: ['action' => $this->generateUrl('app.auth.login')])
+            ->add('symbol', ChoiceType::class, ['choices' => $agentChoices])
+            ->add('submit', SubmitType::class, ['label' => 'Login'])
             ->getForm();
     }
 }

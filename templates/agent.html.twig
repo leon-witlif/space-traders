@@ -2,24 +2,52 @@
 
 {% block body %}
     <div class="my-5">
-        <strong>Welcome back {{ agent.symbol }}</strong><br><br>
+        <h3>Welcome back {{ agent.symbol }}</h3>
 
-        <span>Available credits: {{ agent.credits }}</span><br>
-        <span>Available ships: {{ agent.shipCount }}</span><br><br>
+        <p class="mb-3">Available credits: {{ agent.credits }}</p>
 
-        <strong>Your contracts</strong><br><br>
+        <h4>Your Ships</h4>
 
-        {% for contract in contracts %}
-            <span>Type: {{ contract.type }}</span><br>
-            <span>Reward: {{ contract.terms['payment']['onAccepted'] }} credits immediately, {{ contract.terms['payment']['onFulfilled'] }} credits on fulfillment</span><br>
-            <span>Expires on: {{ contract.expiration|date('d.m.Y H:i:s') }}</span><br>
-            {% if contract.accepted %}
-                <strong>Contract is underway</strong>
-            {% else %}
-                <a href="{{ path('app.contract.accept', {'contract': contract.id}) }}">Accept contract</a>
-            {% endif %}
-            <br><br>
-            <a href="{{ path('app.logout') }}">Terminate agent</a>
-        {% endfor %}
+        <div class="row row-cols-1 row-cols-lg-3 g-3 mb-3">
+            {% for ship in ships %}
+                <div class="col">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ ship.symbol }}</h5>
+                            <p class="card-text">
+                                <span>Status: {{ ship.nav.status }}</span><br>
+                                <span>Crew: {{ ship.crew.current }} / {{ ship.crew.capacity }}</span><br>
+                                <span>Fuel level: {{ ship.fuel.current }} / {{ ship.fuel.capacity }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <h4>Your Contracts</h4>
+
+        <div class="row row-cols-1 row-cols-lg-3 g-3 mb-3">
+            {% for contract in contracts %}
+                <div class="col">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ contract.type }}</h5>
+                            <p class="card-text">
+                                <span>Reward: {{ contract.terms['payment']['onAccepted'] }} credits immediately, {{ contract.terms['payment']['onFulfilled'] }} credits on fulfillment</span><br>
+                                <span>Expires after: {{ contract.expiration|date('d.m.Y H:i:s') }}</span><br>
+                                {% if contract.accepted %}
+                                    <button class="btn btn-sm btn-primary" disabled>Contract is underway</button>
+                                {% else %}
+                                    <a class="btn btn-sm btn-primary" href="{{ path('app.contract.accept', {'contract': contract.id}) }}">Accept contract</a>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <a class="btn btn-primary" href="{{ path('app.auth.logout') }}">Logout</a>
     </div>
 {% endblock %}

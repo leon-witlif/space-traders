@@ -41,7 +41,26 @@ class APIClient
     }
 
     /**
-     * @return array<Contract>
+     * @return Ship[]
+     */
+    public function loadShips(string $token): array
+    {
+        $options = $this->getAgentRequestOptions($token);
+
+        $response = $this->client->request('GET', 'https://api.spacetraders.io/v2/my/ships', $options);
+        $content = json_decode($response->getContent(), true);
+
+        $ships = [];
+
+        foreach ($content['data'] as $ship) {
+            $ships[] = new Ship(...$ship);
+        }
+
+        return $ships;
+    }
+
+    /**
+     * @return Contract[]
      */
     public function loadContracts(string $token): array
     {

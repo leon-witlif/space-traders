@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div class="vh-100 align-content-center">
+        <div class="d-flex gap-3">
+            <div class="w-100">
+                <h2 class="mb-3">Register a new Agent</h2>
+
+                {% form_theme registerAgentForm 'bootstrap_5_layout.html.twig' %}
+                {{ form(registerAgentForm) }}
+            </div>
+
+            <div class="w-100">
+                <h2 class="mb-3">Login with an existing Agent</h2>
+
+                {% form_theme loginAgentForm 'bootstrap_5_layout.html.twig' %}
+                {{ form(loginAgentForm) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}
