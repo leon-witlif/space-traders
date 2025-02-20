@@ -7,15 +7,22 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "symfony/console": "7.2.*",
-        "symfony/dotenv": "7.2.*",
+        "symfony/console": "*",
+        "symfony/dotenv": "*",
         "symfony/flex": "^2",
-        "symfony/form": "7.2.*",
-        "symfony/framework-bundle": "7.2.*",
-        "symfony/http-client": "7.2.*",
-        "symfony/runtime": "7.2.*",
-        "symfony/twig-bundle": "7.2.*",
-        "symfony/yaml": "7.2.*"
+        "symfony/form": "*",
+        "symfony/framework-bundle": "*",
+        "symfony/http-client": "*",
+        "symfony/polyfill-php84": "^1.31",
+        "symfony/runtime": "*",
+        "symfony/twig-bundle": "*",
+        "symfony/yaml": "*"
+    },
+    "require-dev": {
+        "symfony/debug-bundle": "*",
+        "symfony/stopwatch": "*",
+        "symfony/var-dumper": "*",
+        "symfony/web-profiler-bundle": "*"
     },
     "config": {
         "allow-plugins": {
@@ -23,7 +30,6 @@
             "symfony/flex": true,
             "symfony/runtime": true
         },
-        "bump-after-update": true,
         "sort-packages": true
     },
     "autoload": {
