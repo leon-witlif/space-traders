@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace App\Storage;
 
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-
 class AgentStorage
 {
     private readonly string $savePath;
     private array $agents;
 
     public function __construct(
-        #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {
         $this->savePath = $this->projectDir.'/var/space-trader/agents.json';
@@ -31,6 +28,9 @@ class AgentStorage
         $this->save();
     }
 
+    /**
+     * @return array<int, array{symbol: string, token: string}>
+     */
     public function getAgents(): array
     {
         $this->load();
@@ -38,16 +38,28 @@ class AgentStorage
         return $this->agents;
     }
 
+    /**
+     * @return array{symbol: string, token: string}
+     */
+    public function getAgent(string $symbol): array
+    {
+        return array_find($this->getAgents(), fn (array $agent) => $agent['symbol'] === $symbol);
+    }
+
     private function setup(): void
     {
         if (!is_dir($this->projectDir.'/var/space-trader')) {
             mkdir($this->projectDir.'/var/space-trader');
         }
+
+        if (!is_file($this->savePath)) {
+            touch($this->savePath);
+        }
     }
 
     private function load(): void
     {
-        $this->agents = json_decode(file_get_contents($this->savePath), true);
+        $this->agents = json_decode(file_get_contents($this->savePath), true) ?? [];
     }
 
     private function save(): void

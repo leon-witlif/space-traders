@@ -10,19 +10,29 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class ContractController extends AbstractController
+class ShipController extends AbstractController
 {
     public function __construct(
         private readonly SpaceTraderAPI $spaceTraderApi,
     ) {
     }
 
-    #[Route('/contract/{contract}/accept', 'app.contract.accept')]
-    public function acceptAction(Request $request, string $contract): Response
+    #[Route('/ship/{ship}/dock', 'app.ship.dock')]
+    public function dockAction(Request $request, string $ship): Response
     {
         $agentToken = $request->getSession()->get('agentToken');
 
-        $this->spaceTraderApi->acceptContract($agentToken, $contract);
+        $this->spaceTraderApi->dockShip($agentToken, $ship);
+
+        return $this->redirectToRoute('app.agent.detail');
+    }
+
+    #[Route('/ship/{ship}/orbit', 'app.ship.orbit')]
+    public function orbitAction(Request $request, string $ship): Response
+    {
+        $agentToken = $request->getSession()->get('agentToken');
+
+        $this->spaceTraderApi->orbitShip($agentToken, $ship);
 
         return $this->redirectToRoute('app.agent.detail');
     }

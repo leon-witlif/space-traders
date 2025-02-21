@@ -43,8 +43,9 @@ class AuthController extends AbstractController
 
         if ($registerAgentForm->isSubmitted() && $registerAgentForm->isValid()) {
             $data = $registerAgentForm->getData();
+            $agentToken = $this->agentHandler->register($data['symbol'], $data['faction']);
 
-            $this->agentHandler->register($data['symbol'], $data['faction']);
+            $this->agentStorage->addAgent($data['symbol'], $agentToken);
         }
 
         return $this->redirectToRoute('app.auth.index');
@@ -59,8 +60,7 @@ class AuthController extends AbstractController
 
         if ($loginAgentForm->isSubmitted() && $loginAgentForm->isValid()) {
             $data = $loginAgentForm->getData();
-
-            $agent = array_find($this->agentStorage->getAgents(), fn (array $agent) => $agent['symbol'] === $data['symbol']);
+            $agent = $this->agentStorage->getAgent($data['symbol']);
 
             $request->getSession()->set('agentToken', $agent['token']);
 

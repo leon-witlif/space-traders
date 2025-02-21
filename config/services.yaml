@@ -26,3 +26,7 @@ services:
     App\SpaceTrader\APIClient:
         arguments:
             $spaceTraderToken: '%env(SPACE_TRADERS_TOKEN)%'
+
+    App\Storage\AgentStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
