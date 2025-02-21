@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Handler\AgentHandler;
+use App\SpaceTrader\AgentApi;
 use App\Storage\AgentStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -18,7 +18,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class AuthController extends AbstractController
 {
     public function __construct(
-        private readonly AgentHandler $agentHandler,
+        private readonly AgentApi $agentApi,
         private readonly AgentStorage $agentStorage,
     ) {
     }
@@ -43,7 +43,8 @@ class AuthController extends AbstractController
 
         if ($registerAgentForm->isSubmitted() && $registerAgentForm->isValid()) {
             $data = $registerAgentForm->getData();
-            $agentToken = $this->agentHandler->register($data['symbol'], $data['faction']);
+
+            $agentToken = $this->agentApi->registerAgent($data['symbol'], $data['faction'])['token'];
 
             $this->agentStorage->addAgent($data['symbol'], $agentToken);
         }
