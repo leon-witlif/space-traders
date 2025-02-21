@@ -46,7 +46,7 @@ class AuthController extends AbstractController
 
             $agentToken = $this->agentApi->registerAgent($data['symbol'], $data['faction'])['token'];
 
-            $this->agentStorage->addAgent($data['symbol'], $agentToken);
+            $this->agentStorage->addAgent($agentToken, $data['symbol']);
         }
 
         return $this->redirectToRoute('app.auth.index');

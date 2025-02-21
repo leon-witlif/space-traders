@@ -30,3 +30,7 @@ services:
     App\Storage\AgentStorage:
         arguments:
             $projectDir: '%kernel.project_dir%'
+
+    App\Storage\ContractStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'

@@ -56,11 +56,17 @@
                             <div class="card-text">
                                 <span>Terms: {{ contract.getTermsDescription }}</span><br>
                                 <span>Reward: {{ contract.getRewardDescription }}</span><br>
-                                <span>Expires after: {{ contract.expiration|date('d.m.Y H:i:s') }}</span><br>
                                 {% if contract.accepted %}
+                                    <span>Deadline: {{ contract.terms.deadline|date('d.m.Y H:i:s') }}</span><br>
                                     <button class="btn btn-sm btn-primary mt-2" disabled>Contract is underway</button>
+                                    <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.contract.run', {'contractId': contract.id}) }}">Run action</a>
                                 {% else %}
-                                    <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.contract.accept', {'contract': contract.id}) }}">Accept contract</a>
+                                    <span>Expires after: {{ contract.expiration|date('d.m.Y H:i:s') }}</span><br>
+                                    <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.contract.accept', {'contractId': contract.id}) }}">Accept contract</a>
+                                {% endif %}
+                                {% if contract.activeContract %}
+                                    <hr>
+                                    <span>Action: {{ contract.activeContract.action }}</span>
                                 {% endif %}
                             </div>
                         </div>

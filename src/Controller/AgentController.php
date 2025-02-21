@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Contract\Procurement;
+use App\Contract\ProcurementAction;
 use App\Helper\Navigation;
 use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\ShipApi;
 use App\SpaceTrader\SystemApi;
+use App\Storage\ContractStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,6 +24,7 @@ class AgentController extends AbstractController
         private readonly ContractApi $contractApi,
         private readonly ShipApi $shipApi,
         private readonly SystemApi $systemApi,
+        private readonly ContractStorage $contractStorage,
     ) {
     }
 
@@ -31,10 +35,20 @@ class AgentController extends AbstractController
             $agentToken = $request->getSession()->get('agentToken');
 
             $agent = $this->agentApi->loadAgent($agentToken);
+            $contracts = $this->contractApi->loadContracts($agentToken);
+
+            foreach ($contracts as $contract) {
+                $activeContract = $this->contractStorage->getContract($contract->id);
+
+                if ($activeContract) {
+                    $activeContract = new Procurement(contract: $contract, action: ProcurementAction::{$activeContract['action']});
+                    $contract->activeContract = $activeContract;
+                }
+            }
 
             $parameters = [
                 'agent' => $agent,
-                'contracts' => $this->contractApi->loadContracts($agentToken),
+                'contracts' => $contracts,
                 'ships' => $this->shipApi->loadShips($agentToken),
                 'system' => $this->systemApi->loadSystem(Navigation::getSystem($agent->headquarters)),
             ];
