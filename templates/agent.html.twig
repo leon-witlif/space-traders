@@ -1,5 +1,69 @@
 {% extends 'base.html.twig' %}
 
+{% block javascripts %}
+    {{ parent() }}
+
+    <script type="application/javascript">
+        window.addEventListener('load', event => {
+            const automationCheckbox = document.getElementById('automation');
+            let automation = 0;
+
+            if (automationCheckbox) {
+                automation = Number(localStorage.getItem('automation') || 0);
+
+                automationCheckbox.checked = automation === 1;
+
+                automationCheckbox.addEventListener('change', event => {
+                    localStorage.setItem('automation', event.target.checked === true ? 1 : 0);
+                    window.location.reload();
+                });
+            }
+
+            const cooldownElement = document.querySelector('[data-cooldown]');
+
+            if (cooldownElement) {
+                let intervalHandle;
+
+                intervalHandle = setInterval(() => {
+                    let openingParantheses = cooldownElement.innerText.indexOf('(');
+                    let closingParantheses = cooldownElement.innerText.indexOf(')');
+
+                    let currentValue = Number(cooldownElement.innerText.substring(openingParantheses + 1, closingParantheses - 1));
+                    if (currentValue <= 1) {
+                        clearInterval(intervalHandle);
+                    }
+
+                    let newText = cooldownElement.innerText.replace(currentValue + 's', (currentValue - 1) + 's');
+
+                    cooldownElement.innerText = newText;
+                }, 1000);
+            }
+
+            if (automation === 1) {
+                const cooldown = Number(cooldownElement?.dataset.cooldown);
+                const action = document.querySelector('[data-action]').dataset.action;
+                const runActionButton = document.getElementById('run-action-button');
+
+                if (action === 'EXTRACT_ASTEROID') {
+                    if (isNaN(cooldown)) {
+                        runActionButton.click();
+                    } else {
+                        setTimeout(() => {
+                            runActionButton.click();
+                        }, (cooldown + 1) * 1000);
+                    }
+                }
+
+                if (action === 'JETTISON_CARGO') {
+                    setTimeout(() => {
+                        runActionButton.click();
+                    }, 5000);
+                }
+            }
+        });
+    </script>
+{% endblock %}
+
 {% block body %}
     <div class="my-5">
         <h3>Welcome back {{ agent.symbol }}</h3>
@@ -16,14 +80,14 @@
                             <h5 class="card-title">{{ ship.symbol }}</h5>
                             <div class="card-text">
                                 <span>Crew: {{ ship.crew.current }} / {{ ship.crew.capacity }}</span><br>
-                                <span>Modules:</span><br>
-                                <ul class="mb-0">
+                                <button class="btn btn-sm btn-primary mt-2 me-2" data-bs-toggle="collapse" data-bs-target="#modules-{{ loop.index0 }}" aria-expanded="false" aria-controls="modules-{{ loop.index0 }}">Modules</button>
+                                <button class="btn btn-sm btn-primary mt-2" data-bs-toggle="collapse" data-bs-target="#mounts-{{ loop.index0 }}" aria-expanded="false" aria-controls="mounts-{{ loop.index0 }}">Mounts</button>
+                                <ul id="modules-{{ loop.index0 }}" class="collapse mt-2 mb-0">
                                     {% for module in ship.modules %}
                                         <li>{{ module.symbol }}</li>
                                     {% endfor %}
                                 </ul>
-                                <span>Mounts:</span><br>
-                                <ul class="mb-0">
+                                <ul id="mounts-{{ loop.index0 }}" class="collapse mt-2 mb-0">
                                     {% for mount in ship.mounts %}
                                         <li>{{ mount.symbol }}</li>
                                     {% endfor %}
@@ -32,12 +96,17 @@
                                 <span>Status: {{ ship.nav.status }}</span><br>
                                 <span>Flight mode: {{ ship.nav.flightMode }}</span><br>
                                 <span>Fuel level: {{ ship.fuel.current }} / {{ ship.fuel.capacity }}</span><br>
-                                <span>Waypoint: {{ ship.nav.waypointSymbol }}</span><br>
-                                {% if ship.nav.status == 'DOCKED' %}
-                                    <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.ship.orbit', {'ship': ship.symbol}) }}">Orbit</a>
-                                {% elseif ship.nav.status == 'IN_ORBIT' %}
-                                    <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.ship.dock', {'ship': ship.symbol}) }}">Dock</a>
+                                <span>Location: {{ ship.nav.waypointSymbol }}</span><br>
+                                {% if ship.cooldown.expiration|default %}
+                                    <span data-cooldown="{{ ship.cooldown.remainingSeconds }}">Cooldown until: {{ ship.cooldown.expiration|date('d.m.Y H:i:s') }} ({{ ship.cooldown.remainingSeconds }}s)</span><br>
                                 {% endif %}
+                                <hr>
+                                <span>Cargo: {{ ship.cargo.units }} / {{ ship.cargo.capacity }}</span><br>
+                                <ul class="mb-0">
+                                    {% for item in ship.cargo.inventory %}
+                                        <li>{{ item.symbol }} ({{ item.units }})</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -57,16 +126,37 @@
                                 <span>Terms: {{ contract.getTermsDescription }}</span><br>
                                 <span>Reward: {{ contract.getRewardDescription }}</span><br>
                                 {% if contract.accepted %}
+                                    {% set activeContract = activeContracts|find(c => c.contract == contract.id) %}
                                     <span>Deadline: {{ contract.terms.deadline|date('d.m.Y H:i:s') }}</span><br>
-                                    <button class="btn btn-sm btn-primary mt-2" disabled>Contract is underway</button>
-                                    <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.contract.run', {'contractId': contract.id}) }}">Run action</a>
+                                    <div class="d-flex mt-2">
+                                        <button class="btn btn-sm btn-primary me-2" disabled>{% if not contract.fulfilled %}Contract is underway{% else %}Fulfilled{% endif %}</button>
+                                        {% if not contract.fulfilled %}
+                                            <a id="run-action-button" class="btn btn-sm btn-primary" href="{{ path('app.contract.run', {'contractId': contract.id}) }}">Run action</a>
+                                            {% if activeContract.data.action in ['EXTRACT_ASTEROID', 'JETTISON_CARGO'] %}
+                                                <div class="form-check align-self-center ms-auto">
+                                                    <input class="form-check-input" type="checkbox" id="automation">
+                                                    <label class="form-check-label" for="automation">Enable automation</label>
+                                                </div>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
                                 {% else %}
                                     <span>Expires after: {{ contract.expiration|date('d.m.Y H:i:s') }}</span><br>
                                     <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.contract.accept', {'contractId': contract.id}) }}">Accept contract</a>
                                 {% endif %}
-                                {% if contract.activeContract %}
+                                {% if contract.accepted and not contract.fulfilled %}
+                                    {% set activeContract = activeContracts|find(c => c.contract == contract.id) %}
                                     <hr>
-                                    <span>Action: {{ contract.activeContract.action }}</span>
+                                    <span data-action="{{ activeContract.data.action }}">Action: {{ activeContract.data.action }}</span><br>
+                                    {% if activeContract.data.asteroid|default %}
+                                        <span>Asteroid: {{ activeContract.data.asteroid }}</span><br>
+                                    {% endif %}
+                                    {% if activeContract.data.arrival|default %}
+                                        <span>Arrival: {{ activeContract.data.arrival|date('d.m.Y H:i:s') }}</span><br>
+                                    {% endif %}
+                                    {% for message in app.flashes('info') %}
+                                        <span>{{ message }}</span><br>
+                                    {% endfor %}
                                 {% endif %}
                             </div>
                         </div>
