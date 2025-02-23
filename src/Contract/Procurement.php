@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace App\Contract;
 
+use App\Helper\Navigation;
+use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\ShipApi;
-use App\SpaceTrader\Struct\Agent;
-use App\SpaceTrader\Struct\Contract;
-use App\SpaceTrader\Struct\Ship;
-use App\SpaceTrader\Struct\System;
+use App\SpaceTrader\SystemApi;
 use Symfony\Component\HttpClient\Exception\ClientException;
 
 class Procurement
 {
     public function __construct(
+        private readonly AgentApi $agentApi,
         private readonly ContractApi $contractApi,
         private readonly ShipApi $shipApi,
+        private readonly SystemApi $systemApi,
         /** @var array{action: string, asteroidSymbol?: string, arrival?: string} */
         private array $data,
     ) {
@@ -30,10 +31,13 @@ class Procurement
         return $this->data;
     }
 
-    public function run(string $token, Agent $agent, Contract $contract, Ship $ship, System $system): void
+    public function run(string $agentToken, string $contractId, string $shipSymbol): void
     {
         switch (ProcurementAction::{$this->data['action']}) {
             case ProcurementAction::FIND_ASTEROID:
+                $agent = $this->agentApi->get($agentToken);
+                $system = $this->systemApi->get(Navigation::getSystem($agent->headquarters));
+
                 $asteroid = array_find($system->waypoints, fn (array $waypoint) => $waypoint['type'] === 'ENGINEERED_ASTEROID');
 
                 $this->data['action'] = ProcurementAction::NAVIGATE_TO_ASTEROID->name;
@@ -41,87 +45,99 @@ class Procurement
 
                 return;
             case ProcurementAction::NAVIGATE_TO_ASTEROID:
-                $this->shipApi->orbit($token, $ship->symbol);
-                $this->shipApi->navigate($token, $ship->symbol, $this->data['asteroidSymbol']);
-
-                $ship = $this->shipApi->get($token, $ship->symbol);
+                $this->shipApi->orbit($agentToken, $shipSymbol);
+                $navigateResponse = $this->shipApi->navigate($agentToken, $shipSymbol, $this->data['asteroidSymbol']);
 
                 $this->data['action'] = ProcurementAction::REFUEL_SHIP->name;
-                $this->data['arrival'] = $ship->nav['route']['arrival'];
+                $this->data['arrival'] = $navigateResponse['nav']->route->arrival;
 
                 return;
             case ProcurementAction::REFUEL_SHIP:
-                if ($ship->nav['status'] !== 'IN_ORBIT') {
+                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+
+                if ($ship->nav->status !== 'IN_ORBIT') {
                     return;
                 }
 
-                $this->shipApi->dock($token, $ship->symbol);
-                $this->shipApi->refuel($token, $ship->symbol);
-                $this->shipApi->orbit($token, $ship->symbol);
+                $this->shipApi->dock($agentToken, $shipSymbol);
+                $this->shipApi->refuel($agentToken, $shipSymbol);
+                $this->shipApi->orbit($agentToken, $shipSymbol);
 
                 $this->data['action'] = ProcurementAction::EXTRACT_ASTEROID->name;
 
                 return;
             case ProcurementAction::EXTRACT_ASTEROID:
-                if ($ship->cooldown['remainingSeconds'] > 0) {
+                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+
+                if ($ship->cooldown->remainingSeconds > 0) {
                     return;
                 }
 
-                $this->shipApi->extract($token, $ship->symbol);
+                $contract = $this->contractApi->get($agentToken, $contractId);
 
-                $ship = $this->shipApi->get($token, $ship->symbol);
+                $extractResponse = $this->shipApi->extract($agentToken, $shipSymbol);
 
-                if ($ship->cargo['units'] >= $ship->cargo['capacity']) {
+                if ($extractResponse['cargo']->units >= $extractResponse['cargo']->capacity) {
                     $this->data['action'] = ProcurementAction::JETTISON_CARGO->name;
                     // $this->data['action'] = ProcurementAction::SELL_CARGO->name;
                 }
 
                 $contractItem = $contract->terms['deliver'][0];
-                $cargoItem = array_find($ship->cargo['inventory'], fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
+                $cargoItem = array_find($extractResponse['cargo']->inventory, fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
 
-                if ($cargoItem && ($cargoItem['units'] >= floor($ship->cargo['capacity'] * 0.75) || $cargoItem['units'] >= ($contractItem['unitsRequired'] - $contractItem['unitsFulfilled']))) {
+                if ($cargoItem && ($cargoItem['units'] >= floor($extractResponse['cargo']->capacity * 0.75) || $cargoItem['units'] >= ($contractItem['unitsRequired'] - $contractItem['unitsFulfilled']))) {
                     $this->data['action'] = ProcurementAction::NAVIGATE_TO_DELIVERY->name;
                 }
 
                 return;
             case ProcurementAction::JETTISON_CARGO:
+                $contract = $this->contractApi->get($agentToken, $contractId);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+
                 $contractItem = $contract->terms['deliver'][0];
 
-                foreach ($ship->cargo['inventory'] as $item) {
+                $newShipCargo = null;
+
+                foreach ($ship->cargo->inventory as $item) {
                     if ($item['symbol'] !== $contractItem['tradeSymbol']) {
-                        $this->shipApi->jettison($token, $ship->symbol, $item['symbol'], $item['units']);
+                        $newShipCargo = $this->shipApi->jettison($agentToken, $shipSymbol, $item['symbol'], $item['units']);
                     }
                 }
 
-                $ship = $this->shipApi->get($token, $ship->symbol);
+                if ($newShipCargo) {
+                    $cargoItem = array_find($newShipCargo->inventory, fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
 
-                $cargoItem = array_find($ship->cargo['inventory'], fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
+                    if ($cargoItem['units'] < ($contractItem['unitsRequired'] - $contractItem['unitsFulfilled'])) {
+                        $this->data['action'] = ProcurementAction::EXTRACT_ASTEROID->name;
+                    }
 
-                if ($cargoItem['units'] < ($contractItem['unitsRequired'] - $contractItem['unitsFulfilled'])) {
-                    $this->data['action'] = ProcurementAction::EXTRACT_ASTEROID->name;
+                    return;
                 }
 
-                return;
+                throw new \RuntimeException('Tried to jettison no cargo');
             case ProcurementAction::SELL_CARGO:
+                $contract = $this->contractApi->get($agentToken, $contractId);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+
                 $contractItem = $contract->terms['deliver'][0];
 
-                $this->shipApi->dock($token, $ship->symbol);
+                $this->shipApi->dock($agentToken, $shipSymbol);
 
-                foreach ($ship->cargo['inventory'] as $item) {
+                foreach ($ship->cargo->inventory as $item) {
                     if ($item['symbol'] !== $contractItem['tradeSymbol']) {
                         try {
-                            $this->shipApi->sell($token, $ship->symbol, $item['symbol'], $item['units']);
+                            $this->shipApi->sell($agentToken, $shipSymbol, $item['symbol'], $item['units']);
                         } catch (ClientException) {
-                            $this->shipApi->jettison($token, $ship->symbol, $item['symbol'], $item['units']);
+                            $this->shipApi->jettison($agentToken, $shipSymbol, $item['symbol'], $item['units']);
                         }
                     }
                 }
 
-                $this->shipApi->orbit($token, $ship->symbol);
+                $this->shipApi->orbit($agentToken, $shipSymbol);
 
-                $ship = $this->shipApi->get($token, $ship->symbol);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol);
 
-                $cargoItem = array_find($ship->cargo['inventory'], fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
+                $cargoItem = array_find($ship->cargo->inventory, fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
 
                 if ($cargoItem['units'] < ($contractItem['unitsRequired'] - $contractItem['unitsFulfilled'])) {
                     $this->data['action'] = ProcurementAction::EXTRACT_ASTEROID->name;
@@ -129,27 +145,31 @@ class Procurement
 
                 return;
             case ProcurementAction::NAVIGATE_TO_DELIVERY:
-                $this->shipApi->navigate($token, $ship->symbol, $contract->terms['deliver'][0]['destinationSymbol']);
+                $contract = $this->contractApi->get($agentToken, $contractId);
 
-                $ship = $this->shipApi->get($token, $ship->symbol);
+                $navigateResponse = $this->shipApi->navigate($agentToken, $shipSymbol, $contract->terms['deliver'][0]['destinationSymbol']);
 
                 $this->data['action'] = ProcurementAction::DELIVER_CARGO->name;
-                $this->data['arrival'] = $ship->nav['route']['arrival'];
+                $this->data['arrival'] = $navigateResponse['nav']->route->arrival;
 
                 return;
             case ProcurementAction::DELIVER_CARGO:
-                if ($ship->nav['status'] !== 'IN_ORBIT') {
+                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+
+                if ($ship->nav->status !== 'IN_ORBIT') {
                     return;
                 }
 
-                $this->shipApi->dock($token, $ship->symbol);
+                $contract = $this->contractApi->get($agentToken, $contractId);
+
+                $this->shipApi->dock($agentToken, $shipSymbol);
 
                 $contractItem = $contract->terms['deliver'][0];
-                $cargoItem = array_find($ship->cargo['inventory'], fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
+                $cargoItem = array_find($ship->cargo->inventory, fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
 
-                $this->contractApi->deliver($token, $contract->id, $ship->symbol, $cargoItem['symbol'], $cargoItem['units']);
+                $this->contractApi->deliver($agentToken, $contract->id, $shipSymbol, $cargoItem['symbol'], $cargoItem['units']);
 
-                $contract = $this->contractApi->get($token, $contract->id);
+                $contract = $this->contractApi->get($agentToken, $contractId);
                 $contractItem = $contract->terms['deliver'][0];
 
                 if ($contractItem['unitsFulfilled'] < $contractItem['unitsRequired']) {
@@ -158,27 +178,29 @@ class Procurement
                     $this->data['action'] = ProcurementAction::NAVIGATE_TO_HEADQUARTERS->name;
                 }
 
-                $this->shipApi->orbit($token, $ship->symbol);
+                $this->shipApi->orbit($agentToken, $shipSymbol);
 
                 return;
             case ProcurementAction::NAVIGATE_TO_HEADQUARTERS:
-                $this->shipApi->navigate($token, $ship->symbol, $agent->headquarters);
+                $agent = $this->agentApi->get($agentToken);
 
-                $ship = $this->shipApi->get($token, $ship->symbol);
+                $navigateResponse = $this->shipApi->navigate($agentToken, $shipSymbol, $agent->headquarters);
 
                 $this->data['action'] = ProcurementAction::FINISH_CONTRACT->name;
-                $this->data['arrival'] = $ship->nav['route']['arrival'];
+                $this->data['arrival'] = $navigateResponse['nav']->route->arrival;
 
                 return;
             case ProcurementAction::FINISH_CONTRACT:
-                if ($ship->nav['status'] !== 'IN_ORBIT') {
+                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+
+                if ($ship->nav->status !== 'IN_ORBIT') {
                     return;
                 }
 
-                $this->shipApi->dock($token, $ship->symbol);
-                $this->shipApi->refuel($token, $ship->symbol);
+                $this->shipApi->dock($agentToken, $shipSymbol);
+                $this->shipApi->refuel($agentToken, $shipSymbol);
 
-                $this->contractApi->fulfill($token, $contract->id);
+                $this->contractApi->fulfill($agentToken, $contractId);
 
                 return;
         }

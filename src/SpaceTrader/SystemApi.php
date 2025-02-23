@@ -20,6 +20,13 @@ class SystemApi
         return System::fromResponse($response['data']);
     }
 
+    public function waypoint(string $systemSymbol, string $waypointSymbol): array
+    {
+        $response = $this->apiClient->makeAccountRequest('GET', "/systems/$systemSymbol/waypoints/$waypointSymbol");
+
+        return $response['data'];
+    }
+
     public function market(string $systemSymbol, string $waypointSymbol): Market
     {
         $response = $this->apiClient->makeAccountRequest('GET', "/systems/$systemSymbol/waypoints/$waypointSymbol/market");

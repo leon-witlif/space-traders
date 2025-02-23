@@ -28,6 +28,6 @@ class GlobalApi
 
         $content['agent'] = Agent::fromResponse($content['agent']);
 
-        return $response['data'];
+        return $content;
     }
 }

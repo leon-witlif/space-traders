@@ -34,3 +34,7 @@ services:
     App\Storage\ContractStorage:
         arguments:
             $projectDir: '%kernel.project_dir%'
+
+    App\Storage\WaypointStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'

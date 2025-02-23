@@ -49,9 +49,9 @@ class AgentStorage extends Storage
     }
 
     /**
-     * @return array{token: string, symbol: string}
+     * @return array{token: string, symbol: string}|null
      */
-    public function get(string $symbol): array
+    public function get(string $symbol): ?array
     {
         return array_find($this->list(), fn (array $agent) => $agent['symbol'] === $symbol);
     }

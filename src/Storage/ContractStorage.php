@@ -12,7 +12,7 @@ class ContractStorage extends Storage
     }
 
     /**
-     * @param array{token: string, contractId: string, data: array} $data
+     * @param array{agentToken: string, contractId: string, shipSymbol: string, data: array} $data
      */
     public function add(array $data): void
     {
@@ -48,7 +48,7 @@ class ContractStorage extends Storage
     }
 
     /**
-     * @return array<array{token: string, contractId: string, data: array}>
+     * @return array<array{agentToken: string, contractId: string, shipSymbol: string, data: array}>
      */
     public function list(): array
     {
@@ -58,9 +58,9 @@ class ContractStorage extends Storage
     }
 
     /**
-     * @return array{token: string, contractId: string, data: array}
+     * @return array{agentToken: string, contractId: string, shipSymbol: string, data: array}|null
      */
-    public function get(string $symbol): array
+    public function get(string $symbol): ?array
     {
         return array_find($this->list(), fn (array $contract) => $contract['contractId'] === $symbol);
     }

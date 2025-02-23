@@ -45,21 +45,88 @@
                 const runActionButton = document.getElementById('run-action-button');
 
                 if (action === 'EXTRACT_ASTEROID') {
-                    if (isNaN(cooldown)) {
+                    setTimeout(() => {
                         runActionButton.click();
-                    } else {
-                        setTimeout(() => {
-                            runActionButton.click();
-                        }, (cooldown + 1) * 1000);
-                    }
+                    }, isNaN(cooldown) ? 5000 : ((cooldown + 1) * 1000));
                 }
 
-                if (['JETTISON_CARGO', 'SELL_CARGO'].includes(action)) {
+                if (['NAVIGATE_TO_ASTEROID', 'REFUEL_SHIP', 'JETTISON_CARGO', 'SELL_CARGO', 'NAVIGATE_TO_DELIVERY', 'DELIVER_CARGO'].includes(action)) {
                     setTimeout(() => {
                         runActionButton.click();
                     }, 5000);
                 }
             }
+
+            const SIZE = 800;
+            const RANGE = 800;
+
+            const waypoints = {{ scannedWaypoints|json_encode|raw }};
+            console.log(waypoints);
+
+            const mapPixel = (coord, min, max, size) => {
+                return ((coord - min) / (max - min)) * size;
+            };
+
+            const mapCoordinates = (x, y) => {
+                return {x: mapPixel(x, -RANGE, RANGE, SIZE), y: mapPixel(y, -RANGE, RANGE, SIZE)};
+            };
+
+            const calculateDistance = (x1, y1, x2, y2) => {
+                return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            };
+
+            const from = {x: 24, y: -13};
+            const to = {x: 319, y: 86};
+
+            console.log(calculateDistance(from.x, from.y, to.x, to.y));
+
+            const systemCanvas = document.getElementById('system');
+            systemCanvas.width = SIZE;
+            systemCanvas.height = SIZE;
+            const context = systemCanvas.getContext('2d');
+
+            context.fillStyle = 'white';
+            context.fillRect(0, 0, 800, 800);
+
+            const fromPosition = mapCoordinates(from.x, from.y);
+            const toPosition = mapCoordinates(to.x, to.y);
+
+            context.strokeStyle = 'black';
+            context.beginPath();
+            context.moveTo(fromPosition.x, fromPosition.y);
+            context.lineTo(toPosition.x, toPosition.y);
+            context.closePath();
+            context.stroke();
+
+            let maxX = 0;
+            let maxY = 0;
+
+            for (let i = 0; i < waypoints.length; ++i) {
+                if (Math.abs(waypoints[i].x) > maxX) {
+                    maxX = Math.abs(waypoints[i].x);
+                }
+
+                if (Math.abs(waypoints[i].y) > maxY) {
+                    maxY = Math.abs(waypoints[i].y);
+                }
+
+                let position = mapCoordinates(waypoints[i].x, waypoints[i].y);
+
+                if (['X1-YQ84-A1', 'X1-YQ84-B9'].includes(waypoints[i].waypointSymbol)) {
+                    context.fillStyle = 'red';
+                } else if (waypoints[i].exchange.includes('FUEL')) {
+                    context.fillStyle = 'orange';
+                } else {
+                    context.fillStyle = 'black';
+                }
+
+                context.beginPath();
+                context.arc(position.x, position.y, 2.5, 0, Math.PI * 2);
+                context.closePath();
+                context.fill();
+            }
+
+            console.log(`maxX: ${maxX}, maxY: ${maxY}`);
         });
     </script>
 {% endblock %}
@@ -69,9 +136,32 @@
         <h3>Welcome back {{ agent.symbol }}</h3>
 
         <p class="mb-3">
-            Headquarters: {{ agent.headquarters }}<br>
             Available credits: {{ agent.credits }}
         </p>
+
+        <h4>Your System</h4>
+
+        <div class="row row-cols-1 mb-3">
+            <div class="col">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="card-text">
+                            <span>Headquarters: {{ agent.headquarters }}</span><br>
+                            <span>Scanned waypoints: {{ scannedWaypoints|length }} / {{ system.waypoints|length }}</span>
+                            <hr>
+                            <div class="d-flex">
+                                <div>
+                                    <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#system-map" aria-expanded="false" aria-controls="system map">Show System</button>
+                                </div>
+                                <div id="system-map" class="collapse mx-auto">
+                                    <canvas id="system" class="d-block"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <h4>Your Ships</h4>
 
@@ -97,11 +187,17 @@
                                 </ul>
                                 <hr>
                                 <span>Status: {{ ship.nav.status }}</span><br>
-                                <span>Flight mode: {{ ship.nav.flightMode }}</span><br>
+                                <span>
+                                    Flight mode:
+                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'CRUISE' %}btn-success{% else %}btn-primary{% endif %} py-0 me-2" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'CRUISE'}) }}">CRUISE</a>
+                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'BURN' %}btn-success{% else %}btn-primary{% endif %} py-0 me-2" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'BURN'}) }}">BURN</a>
+                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'DRIFT' %}btn-success{% else %}btn-primary{% endif %} py-0 me-2" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'DRIFT'}) }}">DRIFT</a>
+                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'STEALTH' %}btn-success{% else %}btn-primary{% endif %} py-0" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'STEALTH'}) }}">STEALTH</a>
+                                </span><br>
                                 <span>Fuel level: {{ ship.fuel.current }} / {{ ship.fuel.capacity }}</span><br>
                                 <span>Location: {{ ship.nav.waypointSymbol }}</span><br>
                                 {% if ship.cooldown.expiration|default %}
-                                    <span data-cooldown="{{ ship.cooldown.remainingSeconds }}">Cooldown until: {{ ship.cooldown.expiration|date('d.m.Y H:i:s') }} ({{ ship.cooldown.remainingSeconds }}s)</span><br>
+                                    <span data-cooldown="{{ ship.cooldown.remainingSeconds }}">Cooldown: {{ ship.cooldown.expiration|date('d.m.Y H:i:s') }} ({{ ship.cooldown.remainingSeconds }}s)</span><br>
                                 {% endif %}
                                 <hr>
                                 <span>Cargo: {{ ship.cargo.units }} / {{ ship.cargo.capacity }}</span><br>
@@ -110,6 +206,8 @@
                                         <li>{{ item.symbol }} ({{ item.units }})</li>
                                     {% endfor %}
                                 </ul>
+                                <hr>
+                                <a class="btn btn-sm btn-primary" href="{{ path('app.ship.negotiate', {'shipSymbol': ship.symbol}) }}">Negotiate Contract</a>
                             </div>
                         </div>
                     </div>
@@ -135,7 +233,7 @@
                                         {% if not contract.fulfilled %}
                                             {% set acceptedContract = acceptedContracts|find(c => c.contractId == contract.id) %}
                                             <a id="run-action-button" class="btn btn-sm btn-primary" href="{{ path('app.contract.run', {'contractId': contract.id}) }}">Run action</a>
-                                            {% if acceptedContract.data.action in ['EXTRACT_ASTEROID', 'JETTISON_CARGO', 'SELL_CARGO'] %}
+                                            {% if acceptedContract.data.action in ['NAVIGATE_TO_ASTEROID', 'REFUEL_SHIP', 'EXTRACT_ASTEROID', 'JETTISON_CARGO', 'SELL_CARGO', 'NAVIGATE_TO_DELIVERY', 'DELIVER_CARGO'] %}
                                                 <div class="form-check align-self-center ms-auto">
                                                     <input class="form-check-input" type="checkbox" id="automation">
                                                     <label class="form-check-label" for="automation">Enable automation</label>
@@ -150,6 +248,7 @@
                                 {% if contract.accepted and not contract.fulfilled %}
                                     {% set acceptedContract = acceptedContracts|find(c => c.contractId == contract.id) %}
                                     <hr>
+                                    <span>Ship: {{ acceptedContract.shipSymbol }}</span><br>
                                     <span data-action="{{ acceptedContract.data.action }}">Action: {{ acceptedContract.data.action }}</span><br>
                                     {% if acceptedContract.data.asteroidSymbol|default %}
                                         <span>Asteroid: {{ acceptedContract.data.asteroidSymbol }}</span><br>

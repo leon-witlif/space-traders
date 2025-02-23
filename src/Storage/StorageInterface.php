@@ -16,7 +16,7 @@ interface StorageInterface
 
     public function list(): array;
 
-    public function get(string $symbol): array;
+    public function get(string $symbol): ?array;
 
     public function key(string $symbol): int;
 }

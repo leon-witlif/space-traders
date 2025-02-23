@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Helper\Navigation;
 use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\FactionApi;
 use App\SpaceTrader\ShipApi;
 use App\SpaceTrader\SystemApi;
 use App\Storage\ContractStorage;
+use App\Storage\WaypointStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -24,6 +27,7 @@ class AgentController extends AbstractController
         private readonly ShipApi $shipApi,
         private readonly SystemApi $systemApi,
         private readonly ContractStorage $contractStorage,
+        private readonly WaypointStorage $waypointStorage,
     ) {
     }
 
@@ -33,19 +37,59 @@ class AgentController extends AbstractController
         if ($request->getSession()->has('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
+            $agent = $this->agentApi->get($agentToken);
+            $system = $this->systemApi->get(Navigation::getSystem($agent->headquarters));
+
+            foreach ($system->waypoints as $waypoint) {
+                if (!$this->waypointStorage->get($waypoint['symbol'])) {
+                    $this->waypointStorage->add(['waypointSymbol' => $waypoint['symbol'], 'scanned' => false]);
+                }
+            }
+
+            foreach ($this->waypointStorage->list() as $market) {
+                if (!$market['scanned']) {
+                    $waypointResponse = $this->systemApi->waypoint(Navigation::getSystem($market['waypointSymbol']), Navigation::getWaypoint($market['waypointSymbol']));
+
+                    $data = [
+                        'waypointSymbol' => $market['waypointSymbol'],
+                        'scanned' => true,
+                        'type' => $waypointResponse['type'],
+                        'x' => $waypointResponse['x'],
+                        'y' => $waypointResponse['y'],
+                        'traits' => array_map(fn (array $trait) => $trait['symbol'], $waypointResponse['traits']),
+                        'factionSymbol' => $waypointResponse['faction']['symbol'],
+                    ];
+
+                    try {
+                        $marketResponse = $this->systemApi->market(Navigation::getSystem($market['waypointSymbol']), Navigation::getWaypoint($market['waypointSymbol']));
+
+                        $data['exports'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exports);
+                        $data['exchange'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exchange);
+                    } catch (ClientException) {
+                        $data['exports'] = [];
+                        $data['exchange'] = [];
+                    }
+
+                    $this->waypointStorage->update($this->waypointStorage->key($market['waypointSymbol']), $data);
+
+                    break;
+                }
+            }
+
             $parameters = [
-                'agent' => $this->agentApi->get($agentToken),
+                'agent' => $agent,
                 'faction' => $this->factionApi->get('COSMIC'),
                 'contracts' => $this->contractApi->list($agentToken),
                 'ships' => $this->shipApi->list($agentToken),
 
-                // 'system' => $this->systemApi->get('X1-MQ95'),
-                // 'market' => $this->systemApi->market('X1-MQ95', 'X1-MQ95-BA5F'),
+                'system' => $system,
+                'waypoint' => $this->systemApi->waypoint(Navigation::getSystem($agent->headquarters), Navigation::getWaypoint($agent->headquarters)),
 
                 'acceptedContracts' => $this->contractStorage->list(),
+                'scannedWaypoints' => array_values(array_filter($this->waypointStorage->list(), fn (array $market) => $market['scanned'])),
             ];
 
-            return $this->render('agent.html.twig', $parameters);
+            return $this->render('agent.html.twig', dump($parameters));
         }
 
         return $this->redirectToRoute('app.auth.logout');
