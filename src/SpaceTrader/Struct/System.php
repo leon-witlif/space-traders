@@ -6,6 +6,8 @@ namespace App\SpaceTrader\Struct;
 
 readonly class System
 {
+    use FromRequestTrait;
+
     public function __construct(
         public string $symbol,
         public string $sectorSymbol,

@@ -8,46 +8,45 @@ use App\SpaceTrader\Struct\Contract;
 
 class ContractApi
 {
-    public function __construct(
-        private readonly ApiClient $apiClient,
-    ) {
+    public function __construct(private readonly ApiClient $apiClient)
+    {
     }
 
     /**
      * @return array<Contract>
      */
-    public function loadContracts(string $token): array
+    public function list(string $token): array
     {
-        $response = $this->apiClient->makeAgentRequest('GET', 'https://api.spacetraders.io/v2/my/contracts', $token);
+        $response = $this->apiClient->makeAgentRequest('GET', '/my/contracts', $token);
 
-        return array_map(fn (array $contract) => new Contract(...$contract), $response['data']);
+        return array_map(fn (array $contract) => Contract::fromResponse($contract), $response['data']);
     }
 
-    public function loadContract(string $token, string $contractId): Contract
+    public function get(string $token, string $contractId): Contract
     {
-        $response = $this->apiClient->makeAgentRequest('GET', "https://api.spacetraders.io/v2/my/contracts/$contractId", $token);
+        $response = $this->apiClient->makeAgentRequest('GET', "/my/contracts/$contractId", $token);
 
-        return new Contract(...$response['data']);
+        return Contract::fromResponse($response['data']);
     }
 
-    public function acceptContract(string $token, string $contractId): void
+    public function accept(string $token, string $contractId): void
     {
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/contracts/$contractId/accept", $token);
+        $this->apiClient->makeAgentRequest('POST', "/my/contracts/$contractId/accept", $token);
     }
 
-    public function deliverCargo(string $token, string $contractId, string $shipSymbol, string $cargoSymbol, int $units): void
+    public function deliver(string $token, string $contractId, string $shipSymbol, string $tradeSymbol, int $units): void
     {
         $data = [
             'shipSymbol' => $shipSymbol,
-            'tradeSymbol' => $cargoSymbol,
+            'tradeSymbol' => $tradeSymbol,
             'units' => $units,
         ];
 
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/contracts/$contractId/deliver", $token, ['body' => json_encode($data)]);
+        $this->apiClient->makeAgentRequest('POST', "/my/contracts/$contractId/deliver", $token, ['body' => json_encode($data)]);
     }
 
-    public function fulfillContract(string $token, string $contractId): void
+    public function fulfill(string $token, string $contractId): void
     {
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/contracts/$contractId/fulfill", $token);
+        $this->apiClient->makeAgentRequest('POST', "/my/contracts/$contractId/fulfill", $token);
     }
 }

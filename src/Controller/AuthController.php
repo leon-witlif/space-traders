@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\SpaceTrader\AgentApi;
+use App\SpaceTrader\GlobalApi;
 use App\Storage\AgentStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -18,7 +18,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class AuthController extends AbstractController
 {
     public function __construct(
-        private readonly AgentApi $agentApi,
+        private readonly GlobalApi $globalApi,
         private readonly AgentStorage $agentStorage,
     ) {
     }
@@ -44,9 +44,9 @@ class AuthController extends AbstractController
         if ($registerAgentForm->isSubmitted() && $registerAgentForm->isValid()) {
             $data = $registerAgentForm->getData();
 
-            $agentToken = $this->agentApi->registerAgent($data['symbol'], $data['faction'])['token'];
+            $agentToken = $this->globalApi->register($data['faction'], $data['symbol'])['token'];
 
-            $this->agentStorage->addAgent($agentToken, $data['symbol']);
+            $this->agentStorage->add(['token' => $agentToken, 'symbol' => $data['symbol']]);
         }
 
         return $this->redirectToRoute('app.auth.index');
@@ -61,7 +61,7 @@ class AuthController extends AbstractController
 
         if ($loginAgentForm->isSubmitted() && $loginAgentForm->isValid()) {
             $data = $loginAgentForm->getData();
-            $agent = $this->agentStorage->getAgent($data['symbol']);
+            $agent = $this->agentStorage->get($data['symbol']);
 
             $request->getSession()->set('agentToken', $agent['token']);
 
@@ -92,7 +92,7 @@ class AuthController extends AbstractController
     {
         $agentChoices = [];
 
-        foreach ($this->agentStorage->getAgents() as $agent) {
+        foreach ($this->agentStorage->list() as $agent) {
             $agentChoices[$agent['symbol']] = $agent['symbol'];
         }
 

@@ -54,7 +54,7 @@
                     }
                 }
 
-                if (action === 'JETTISON_CARGO') {
+                if (['JETTISON_CARGO', 'SELL_CARGO'].includes(action)) {
                     setTimeout(() => {
                         runActionButton.click();
                     }, 5000);
@@ -68,7 +68,10 @@
     <div class="my-5">
         <h3>Welcome back {{ agent.symbol }}</h3>
 
-        <p class="mb-3">Available credits: {{ agent.credits }}</p>
+        <p class="mb-3">
+            Headquarters: {{ agent.headquarters }}<br>
+            Available credits: {{ agent.credits }}
+        </p>
 
         <h4>Your Ships</h4>
 
@@ -126,13 +129,13 @@
                                 <span>Terms: {{ contract.getTermsDescription }}</span><br>
                                 <span>Reward: {{ contract.getRewardDescription }}</span><br>
                                 {% if contract.accepted %}
-                                    {% set activeContract = activeContracts|find(c => c.contract == contract.id) %}
                                     <span>Deadline: {{ contract.terms.deadline|date('d.m.Y H:i:s') }}</span><br>
                                     <div class="d-flex mt-2">
                                         <button class="btn btn-sm btn-primary me-2" disabled>{% if not contract.fulfilled %}Contract is underway{% else %}Fulfilled{% endif %}</button>
                                         {% if not contract.fulfilled %}
+                                            {% set acceptedContract = acceptedContracts|find(c => c.contractId == contract.id) %}
                                             <a id="run-action-button" class="btn btn-sm btn-primary" href="{{ path('app.contract.run', {'contractId': contract.id}) }}">Run action</a>
-                                            {% if activeContract.data.action in ['EXTRACT_ASTEROID', 'JETTISON_CARGO'] %}
+                                            {% if acceptedContract.data.action in ['EXTRACT_ASTEROID', 'JETTISON_CARGO', 'SELL_CARGO'] %}
                                                 <div class="form-check align-self-center ms-auto">
                                                     <input class="form-check-input" type="checkbox" id="automation">
                                                     <label class="form-check-label" for="automation">Enable automation</label>
@@ -141,18 +144,18 @@
                                         {% endif %}
                                     </div>
                                 {% else %}
-                                    <span>Expires after: {{ contract.expiration|date('d.m.Y H:i:s') }}</span><br>
+                                    <span>Expires after: {{ contract.deadlineToAccept|date('d.m.Y H:i:s') }}</span><br>
                                     <a class="btn btn-sm btn-primary mt-2" href="{{ path('app.contract.accept', {'contractId': contract.id}) }}">Accept contract</a>
                                 {% endif %}
                                 {% if contract.accepted and not contract.fulfilled %}
-                                    {% set activeContract = activeContracts|find(c => c.contract == contract.id) %}
+                                    {% set acceptedContract = acceptedContracts|find(c => c.contractId == contract.id) %}
                                     <hr>
-                                    <span data-action="{{ activeContract.data.action }}">Action: {{ activeContract.data.action }}</span><br>
-                                    {% if activeContract.data.asteroid|default %}
-                                        <span>Asteroid: {{ activeContract.data.asteroid }}</span><br>
+                                    <span data-action="{{ acceptedContract.data.action }}">Action: {{ acceptedContract.data.action }}</span><br>
+                                    {% if acceptedContract.data.asteroidSymbol|default %}
+                                        <span>Asteroid: {{ acceptedContract.data.asteroidSymbol }}</span><br>
                                     {% endif %}
-                                    {% if activeContract.data.arrival|default %}
-                                        <span>Arrival: {{ activeContract.data.arrival|date('d.m.Y H:i:s') }}</span><br>
+                                    {% if acceptedContract.data.arrival|default %}
+                                        <span>Arrival: {{ acceptedContract.data.arrival|date('d.m.Y H:i:s') }}</span><br>
                                     {% endif %}
                                     {% for message in app.flashes('info') %}
                                         <span>{{ message }}</span><br>

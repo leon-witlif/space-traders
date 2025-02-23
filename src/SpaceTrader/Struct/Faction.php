@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\SpaceTrader\Struct;
 
-readonly class Agent
+readonly class Faction
 {
     use FromRequestTrait;
 
     public function __construct(
-        public string $accountId,
         public string $symbol,
+        public string $name,
+        public string $description,
         public string $headquarters,
-        public int $credits,
-        public string $startingFaction,
-        public int $shipCount,
+        public array $traits,
+        public bool $isRecruiting,
     ) {
     }
 }

@@ -6,7 +6,9 @@ namespace App\Controller;
 
 use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
+use App\SpaceTrader\FactionApi;
 use App\SpaceTrader\ShipApi;
+use App\SpaceTrader\SystemApi;
 use App\Storage\ContractStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,8 +19,10 @@ class AgentController extends AbstractController
 {
     public function __construct(
         private readonly AgentApi $agentApi,
+        private readonly FactionApi $factionApi,
         private readonly ContractApi $contractApi,
         private readonly ShipApi $shipApi,
+        private readonly SystemApi $systemApi,
         private readonly ContractStorage $contractStorage,
     ) {
     }
@@ -29,14 +33,16 @@ class AgentController extends AbstractController
         if ($request->getSession()->has('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $agent = $this->agentApi->loadAgent($agentToken);
-
             $parameters = [
-                'agent' => $agent,
-                'contracts' => $this->contractApi->loadContracts($agentToken),
-                'ships' => $this->shipApi->loadShips($agentToken),
+                'agent' => $this->agentApi->get($agentToken),
+                'faction' => $this->factionApi->get('COSMIC'),
+                'contracts' => $this->contractApi->list($agentToken),
+                'ships' => $this->shipApi->list($agentToken),
 
-                'activeContracts' => $this->contractStorage->getContracts(),
+                // 'system' => $this->systemApi->get('X1-MQ95'),
+                // 'market' => $this->systemApi->market('X1-MQ95', 'X1-MQ95-BA5F'),
+
+                'acceptedContracts' => $this->contractStorage->list(),
             ];
 
             return $this->render('agent.html.twig', $parameters);

@@ -33,9 +33,9 @@ class ContractController extends AbstractController
     {
         $agentToken = $request->getSession()->get('agentToken');
 
-        $this->contractApi->acceptContract($agentToken, $contractId);
+        $this->contractApi->accept($agentToken, $contractId);
 
-        $this->contractStorage->addContract($agentToken, $contractId, ['action' => ProcurementAction::FIND_ASTEROID->name]);
+        $this->contractStorage->add(['token' => $agentToken, 'contractId' => $contractId, 'data' => ['action' => ProcurementAction::FIND_ASTEROID->name]]);
 
         return $this->redirectToRoute('app.agent.detail');
     }
@@ -45,22 +45,23 @@ class ContractController extends AbstractController
     {
         if ($request->getSession()->get('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
-            $activeContract = $this->contractStorage->getContract($contractId);
+            $acceptedContracts = $this->contractStorage->get($contractId);
 
-            $agent = $this->agentApi->loadAgent($agentToken);
-            $contract = $this->contractApi->loadContract($agentToken, $contractId);
-            $ship = $this->shipApi->loadShips($agentToken)[0];
-            $system = $this->systemApi->loadSystem(Navigation::getSystem($agent->headquarters));
+            $agent = $this->agentApi->get($agentToken);
+            $contract = $this->contractApi->get($agentToken, $contractId);
+            $ship = $this->shipApi->list($agentToken)[0];
+            $system = $this->systemApi->get(Navigation::getSystem($agent->headquarters));
 
-            $procurement = new Procurement($this->contractApi, $this->shipApi, $activeContract['data']);
+            $procurement = new Procurement($this->contractApi, $this->shipApi, $acceptedContracts['data']);
             $procurement->run($agentToken, $agent, $contract, $ship, $system);
 
-            $contract = $this->contractApi->loadContract($agentToken, $contractId);
+            $contract = $this->contractApi->get($agentToken, $contractId);
 
             if ($contract->fulfilled) {
-                $this->contractStorage->removeContract($contractId);
+                $this->contractStorage->remove($this->contractStorage->key($contractId));
             } else {
-                $this->contractStorage->updateContract($contractId, $procurement->getData());
+                $data = ['token' => $agentToken, 'contractId' => $contractId, 'data' => $procurement->getData()];
+                $this->contractStorage->update($this->contractStorage->key($contractId), $data);
             }
 
             return $this->redirectToRoute('app.agent.detail');

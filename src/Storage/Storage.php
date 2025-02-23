@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Storage;
 
-abstract class Storage
+abstract class Storage implements StorageInterface
 {
     private readonly string $savePath;
     private readonly string $saveFile;
@@ -17,7 +17,6 @@ abstract class Storage
         $this->saveFile = $saveFile;
 
         $this->setup();
-        $this->load();
     }
 
     private function setup(): void

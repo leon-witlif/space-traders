@@ -8,64 +8,73 @@ use App\SpaceTrader\Struct\Ship;
 
 class ShipApi
 {
-    public function __construct(
-        private readonly ApiClient $apiClient,
-    ) {
+    public function __construct(private readonly ApiClient $apiClient)
+    {
     }
 
     /**
      * @return array<Ship>
      */
-    public function loadShips(string $token): array
+    public function list(string $token): array
     {
-        $response = $this->apiClient->makeAgentRequest('GET', 'https://api.spacetraders.io/v2/my/ships', $token);
+        $response = $this->apiClient->makeAgentRequest('GET', '/my/ships', $token);
 
-        return array_map(fn (array $ship) => new Ship(...$ship), $response['data']);
+        return array_map(fn (array $ship) => Ship::fromResponse($ship), $response['data']);
     }
 
-    public function loadShip(string $token, string $symbol): Ship
+    public function get(string $token, string $shipSymbol): Ship
     {
-        $response = $this->apiClient->makeAgentRequest('GET', "https://api.spacetraders.io/v2/my/ships/$symbol", $token);
+        $response = $this->apiClient->makeAgentRequest('GET', "/my/ships/$shipSymbol", $token);
 
-        return new Ship(...$response['data']);
+        return Ship::fromResponse($response['data']);
     }
 
-    public function dockShip(string $token, string $symbol): void
+    public function orbit(string $token, string $shipSymbol): void
     {
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/ships/$symbol/dock", $token);
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/orbit", $token);
     }
 
-    public function orbitShip(string $token, string $symbol): void
+    public function dock(string $token, string $shipSymbol): void
     {
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/ships/$symbol/orbit", $token);
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/dock", $token);
     }
 
-    public function navigateShip(string $token, string $symbol, string $waypoint): void
+    public function extract(string $token, string $shipSymbol): void
+    {
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/extract", $token);
+    }
+
+    public function jettison(string $token, string $shipSymbol, string $symbol, int $units): void
     {
         $data = [
-            'waypointSymbol' => $waypoint,
-        ];
-
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/ships/$symbol/navigate", $token, ['body' => json_encode($data)]);
-    }
-
-    public function refuelShip(string $token, string $symbol): void
-    {
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/ships/$symbol/refuel", $token);
-    }
-
-    public function extract(string $token, string $symbol): void
-    {
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/ships/$symbol/extract", $token);
-    }
-
-    public function jettison(string $token, string $symbol, string $cargo, int $units): void
-    {
-        $data = [
-            'symbol' => $cargo,
+            'symbol' => $symbol,
             'units' => $units,
         ];
 
-        $this->apiClient->makeAgentRequest('POST', "https://api.spacetraders.io/v2/my/ships/$symbol/jettison", $token, ['body' => json_encode($data)]);
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/jettison", $token, ['body' => json_encode($data)]);
+    }
+
+    public function navigate(string $token, string $shipSymbol, string $waypointSymbol): void
+    {
+        $data = [
+            'waypointSymbol' => $waypointSymbol,
+        ];
+
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/navigate", $token, ['body' => json_encode($data)]);
+    }
+
+    public function sell(string $token, string $shipSymbol, string $symbol, int $units): void
+    {
+        $data = [
+            'symbol' => $symbol,
+            'units' => $units,
+        ];
+
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/sell", $token, ['body' => json_encode($data)]);
+    }
+
+    public function refuel(string $token, string $shipSymbol): void
+    {
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/refuel", $token);
     }
 }

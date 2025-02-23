@@ -6,26 +6,42 @@ namespace App\Storage;
 
 class AgentStorage extends Storage
 {
-    public function __construct(
-        private readonly string $projectDir,
-    ) {
+    public function __construct(private readonly string $projectDir)
+    {
         parent::__construct($this->projectDir.'/var/space-trader/', 'agents.json');
     }
 
-    public function addAgent(string $token, string $symbol): void
+    /**
+     * @param array{token: string, symbol: string} $data
+     */
+    public function add(array $data): void
     {
-        $this->data[] = [
-            'token' => $token,
-            'symbol' => $symbol,
-        ];
+        $this->load();
+
+        $this->data[] = $data;
 
         $this->save();
     }
 
+    public function update(int $key, array $data): void
+    {
+        throw new \RuntimeException('NYI');
+    }
+
+    public function remove(int $key): void
+    {
+        throw new \RuntimeException('NYI');
+    }
+
+    public function clear(): void
+    {
+        throw new \RuntimeException('NYI');
+    }
+
     /**
-     * @return array<int, array{token: string, symbol: string}>
+     * @return array<array{token: string, symbol: string}>
      */
-    public function getAgents(): array
+    public function list(): array
     {
         $this->load();
 
@@ -35,8 +51,13 @@ class AgentStorage extends Storage
     /**
      * @return array{token: string, symbol: string}
      */
-    public function getAgent(string $symbol): array
+    public function get(string $symbol): array
     {
-        return array_find($this->getAgents(), fn (array $agent) => $agent['symbol'] === $symbol);
+        return array_find($this->list(), fn (array $agent) => $agent['symbol'] === $symbol);
+    }
+
+    public function key(string $symbol): int
+    {
+        return array_find_key($this->list(), fn (array $agent) => $agent['symbol'] === $symbol);
     }
 }

@@ -6,43 +6,51 @@ namespace App\Storage;
 
 class ContractStorage extends Storage
 {
-    public function __construct(
-        private readonly string $projectDir,
-    ) {
+    public function __construct(private readonly string $projectDir)
+    {
         parent::__construct($this->projectDir.'/var/space-trader/', 'contracts.json');
     }
 
-    public function addContract(string $token, string $contractId, array $data): void
+    /**
+     * @param array{token: string, contractId: string, data: array} $data
+     */
+    public function add(array $data): void
     {
-        $this->data[] = [
-            'token' => $token,
-            'contract' => $contractId,
-            'data' => $data,
-        ];
+        $this->load();
+
+        $this->data[] = $data;
 
         $this->save();
     }
 
-    public function updateContract(string $contractId, array $data): void
+    public function update(int $key, array $data): void
     {
-        $contractIndex = array_find_key($this->getContracts(), fn (array $contract) => $contract['contract'] === $contractId);
+        $this->load();
 
-        $this->data[$contractIndex]['data'] = $data;
+        $this->data[$key] = $data;
 
         $this->save();
     }
 
-    public function removeContract(string $contractId): void
+    public function remove(int $key): void
     {
-        $this->data = array_values(array_filter($this->getContracts(), fn (array $contract) => $contract['contract'] !== $contractId));
+        $this->load();
+
+        array_splice($this->data, $key, 1);
+        $this->data = array_values($this->data);
 
         $this->save();
+    }
+
+    public function clear(): void
+    {
+        throw new \RuntimeException('NYI');
     }
 
     /**
-     * @return array<int, array{token: string, contract: string, data: array}>
+     * @return array<array{token: string, contractId: string, data: array}>
      */
-    public function getContracts(): array
+    public function list(): array
     {
         $this->load();
 
@@ -50,10 +58,15 @@ class ContractStorage extends Storage
     }
 
     /**
-     * @return array{token: string, contract: string, data: array}
+     * @return array{token: string, contractId: string, data: array}
      */
-    public function getContract(string $contractId): array
+    public function get(string $symbol): array
     {
-        return array_find($this->getContracts(), fn (array $contract) => $contract['contract'] === $contractId);
+        return array_find($this->list(), fn (array $contract) => $contract['contractId'] === $symbol);
+    }
+
+    public function key(string $symbol): int
+    {
+        return array_find_key($this->list(), fn (array $contract) => $contract['contractId'] === $symbol);
     }
 }

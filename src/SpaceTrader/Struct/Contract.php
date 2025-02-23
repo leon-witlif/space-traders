@@ -6,14 +6,16 @@ namespace App\SpaceTrader\Struct;
 
 readonly class Contract
 {
+    use FromRequestTrait;
+
     public function __construct(
         public string $id,
         public string $factionSymbol,
         public string $type,
+        /** @var array{deadline: string, payment: array{onAccepted: int, onFulfilled: int}, deliver: array<array{tradeSymbol: string, destinationSymbol: string, unitsRequired: int, unitsFulfilled: int}>} */
         public array $terms,
         public bool $accepted,
         public bool $fulfilled,
-        public string $expiration,
         public string $deadlineToAccept,
     ) {
     }
