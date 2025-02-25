@@ -149,12 +149,20 @@
                             <span>Headquarters: {{ agent.headquarters }}</span><br>
                             <span>Scanned waypoints: {{ scannedWaypoints|length }} / {{ system.waypoints|length }}</span>
                             <hr>
-                            <div class="d-flex">
+                            <div class="d-flex justify-content-between">
                                 <div>
                                     <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#system-map" aria-expanded="false" aria-controls="system map">Show System</button>
                                 </div>
-                                <div id="system-map" class="collapse mx-auto">
-                                    <canvas id="system" class="d-block"></canvas>
+                                <div id="system-map" class="collapse flex-grow-1">
+                                    <div class="d-flex justify-content-evenly">
+                                        <canvas id="system" class="d-block"></canvas>
+                                        <div>
+                                            <h4>Ship Controls</h4>
+
+                                            {% form_theme shipControl.flightModeForm 'bootstrap_5_layout.html.twig' %}
+                                            {{ form(shipControl.flightModeForm) }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

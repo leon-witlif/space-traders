@@ -6,6 +6,7 @@ namespace App\SpaceTrader;
 
 use App\SpaceTrader\Struct\Market;
 use App\SpaceTrader\Struct\System;
+use App\SpaceTrader\Struct\Waypoint;
 
 class SystemApi
 {
@@ -20,11 +21,11 @@ class SystemApi
         return System::fromResponse($response['data']);
     }
 
-    public function waypoint(string $systemSymbol, string $waypointSymbol): array
+    public function waypoint(string $systemSymbol, string $waypointSymbol): Waypoint
     {
         $response = $this->apiClient->makeAccountRequest('GET', "/systems/$systemSymbol/waypoints/$waypointSymbol");
 
-        return $response['data'];
+        return Waypoint::fromResponse($response['data']);
     }
 
     public function market(string $systemSymbol, string $waypointSymbol): Market

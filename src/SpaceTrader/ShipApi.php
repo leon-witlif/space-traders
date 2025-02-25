@@ -45,9 +45,9 @@ class ShipApi
     /**
      * @return array{
      *     cooldown: Cooldown,
-     *     extraction: array,
+     *     extraction: array<string, mixed>,
      *     cargo: ShipCargo,
-     *     events: array
+     *     events: array<int, array<string, mixed>>
      * }
      */
     public function extract(string $token, string $shipSymbol): array
@@ -74,9 +74,9 @@ class ShipApi
 
     /**
      * @return array{
-     *     fuel: array,
+     *     fuel: array<string, mixed>,
      *     nav: ShipNav,
-     *     events: array
+     *     events: array<int, array<string, mixed>>
      * }
      */
     public function navigate(string $token, string $shipSymbol, string $waypointSymbol): array

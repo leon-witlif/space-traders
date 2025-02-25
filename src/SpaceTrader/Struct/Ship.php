@@ -8,6 +8,7 @@ readonly class Ship
 {
     use FromRequestTrait;
 
+    /** @phpstan-ignore-next-line missingType.iterableValue */
     public function __construct(
         public string $symbol,
         public array $registration,

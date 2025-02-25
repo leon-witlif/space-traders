@@ -17,7 +17,8 @@ final class ApiClient
     }
 
     /**
-     * @return array{data: array, meta?: array}
+     * @param array<string, mixed> $data
+     * @return array{data: array<int|string, mixed>, meta?: array{total: int, page: int, limit: int}}
      */
     public function makeAccountRequest(string $method, string $path, array $data = []): array
     {
@@ -27,7 +28,8 @@ final class ApiClient
     }
 
     /**
-     * @return array{data: array, meta?: array}
+     * @param array<string, mixed> $data
+     * @return array{data: array<int|string, mixed>, meta?: array{total: int, page: int, limit: int}}
      */
     public function makeAgentRequest(string $method, string $path, string $token, array $data = []): array
     {
@@ -36,6 +38,9 @@ final class ApiClient
         return $this->makeRequest($method, $path, $options);
     }
 
+    /**
+     * @return array{auth_bearer: string, headers: array{Content-Type: string}}
+     */
     private function getRequestOptions(string $bearerToken): array
     {
         return [
@@ -47,7 +52,8 @@ final class ApiClient
     }
 
     /**
-     * @return array{data: array, meta?: array}
+     * @phpstan-param array<string, mixed> $options
+     * @phpstan-return array{data: array<int|string, mixed>, meta?: array{total: int, page: int, limit: int}}
      */
     private function makeRequest(string $method, string $path, array $options = []): array
     {

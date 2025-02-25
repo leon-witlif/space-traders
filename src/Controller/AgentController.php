@@ -13,6 +13,9 @@ use App\SpaceTrader\SystemApi;
 use App\Storage\ContractStorage;
 use App\Storage\WaypointStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -53,11 +56,11 @@ class AgentController extends AbstractController
                     $data = [
                         'waypointSymbol' => $market['waypointSymbol'],
                         'scanned' => true,
-                        'type' => $waypointResponse['type'],
-                        'x' => $waypointResponse['x'],
-                        'y' => $waypointResponse['y'],
-                        'traits' => array_map(fn (array $trait) => $trait['symbol'], $waypointResponse['traits']),
-                        'factionSymbol' => $waypointResponse['faction']['symbol'],
+                        'type' => $waypointResponse->type,
+                        'x' => $waypointResponse->x,
+                        'y' => $waypointResponse->y,
+                        'traits' => array_map(fn (array $trait) => $trait['symbol'], $waypointResponse->traits),
+                        'factionSymbol' => $waypointResponse->faction?->symbol,
                     ];
 
                     try {
@@ -87,11 +90,28 @@ class AgentController extends AbstractController
 
                 'acceptedContracts' => $this->contractStorage->list(),
                 'scannedWaypoints' => array_values(array_filter($this->waypointStorage->list(), fn (array $market) => $market['scanned'])),
+
+                'shipControl' => $this->createShipControlForms(),
             ];
 
             return $this->render('agent.html.twig', dump($parameters));
         }
 
         return $this->redirectToRoute('app.auth.logout');
+    }
+
+    /**
+     * @return array<FormView>
+     */
+    private function createShipControlForms(): array
+    {
+        $flightModeForm = $this->createFormBuilder()
+            ->add('flightMode', ChoiceType::class, ['choices' => ['CRUISE' => 'CRUISE', 'BURN' => 'BURN', 'DRIFT' => 'DRIFT', 'STEALTH' => 'STEALTH']])
+            ->getForm()
+            ->createView();
+
+        return [
+            'flightModeForm' => $flightModeForm,
+        ];
     }
 }

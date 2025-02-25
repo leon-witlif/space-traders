@@ -6,6 +6,9 @@ namespace App\SpaceTrader\Struct;
 
 trait FromRequestTrait
 {
+    /**
+     * @phpstan-param array<string, mixed> $data
+     */
     public static function fromResponse(array $data): self
     {
         $reflection = new \ReflectionClass(self::class);
@@ -13,9 +16,9 @@ trait FromRequestTrait
 
         foreach ($reflection->getProperties() as $property) {
             if ($property->getType()->allowsNull()) {
-                $arguments[] = array_key_exists($property->getName(), $data) ? static::createArgument($property, $data[$property->getName()]) : null;
+                $arguments[] = array_key_exists($property->getName(), $data) ? self::createArgument($property, $data[$property->getName()]) : null;
             } else {
-                $arguments[] = static::createArgument($property, $data[$property->getName()]);
+                $arguments[] = self::createArgument($property, $data[$property->getName()]);
             }
         }
 
@@ -24,9 +27,11 @@ trait FromRequestTrait
 
     private static function createArgument(\ReflectionProperty $property, mixed $data): mixed
     {
-        if (class_exists($property->getType()->getName())) {
-            /** @var object&FromRequestTrait $class */
-            $class = $property->getType()->getName();
+        /** @var \ReflectionNamedType|\ReflectionUnionType|\ReflectionIntersectionType|null $type */
+        $type = $property->getType();
+
+        if (class_exists($type->getName())) {
+            $class = $type->getName();
 
             return $class::fromResponse($data);
         }

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\SpaceTrader;
 
 use App\SpaceTrader\Struct\Agent;
+use App\SpaceTrader\Struct\Contract;
+use App\SpaceTrader\Struct\Faction;
+use App\SpaceTrader\Struct\Ship;
 
 class GlobalApi
 {
@@ -13,7 +16,7 @@ class GlobalApi
     }
 
     /**
-     * @return array{agent: Agent, contract: array, faction: array, ship: array, token: string}
+     * @return array{agent: Agent, contract: Contract, faction: Faction, ship: Ship, token: string}
      */
     public function register(string $faction, string $symbol, string $email = ''): array
     {
@@ -27,6 +30,9 @@ class GlobalApi
         $content = $response['data'];
 
         $content['agent'] = Agent::fromResponse($content['agent']);
+        $content['contract'] = Contract::fromResponse($content['contract']);
+        $content['faction'] = Faction::fromResponse($content['faction']);
+        $content['ship'] = Ship::fromResponse($content['ship']);
 
         return $content;
     }

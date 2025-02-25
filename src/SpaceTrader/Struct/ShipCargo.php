@@ -8,6 +8,7 @@ readonly class ShipCargo
 {
     use FromRequestTrait;
 
+    /** @phpstan-ignore-next-line missingType.iterableValue */
     public function __construct(
         public int $capacity,
         public int $units,
