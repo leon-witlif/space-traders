@@ -57,11 +57,33 @@
                 }
             }
 
+            const hundredth = (number) => {
+                return Number(Number(number).toString()[0]);
+            };
+
             const SIZE = 800;
-            const RANGE = 800;
+            let RANGE;
 
             const waypoints = {{ scannedWaypoints|json_encode|raw }};
             console.log(waypoints);
+
+            let maxX = 0;
+            let maxY = 0;
+
+            for (let i = 0; i < waypoints.length; ++i) {
+                if (Math.abs(waypoints[i].x) > maxX) {
+                    maxX = Math.abs(waypoints[i].x);
+                }
+
+                if (Math.abs(waypoints[i].y) > maxY) {
+                    maxY = Math.abs(waypoints[i].y);
+                }
+            }
+
+            RANGE = (hundredth(Math.max(maxX, maxY)) + 1) * 100 + 50;
+
+            console.log(`maxX: ${maxX}, maxY: ${maxY}`);
+            console.log(RANGE);
 
             const mapPixel = (coord, min, max, size) => {
                 return ((coord - min) / (max - min)) * size;
@@ -88,45 +110,63 @@
             context.fillStyle = 'white';
             context.fillRect(0, 0, 800, 800);
 
-            const fromPosition = mapCoordinates(from.x, from.y);
-            const toPosition = mapCoordinates(to.x, to.y);
+            // const fromWaypointCoords = {x: {{ navigator.connectingWaypoints.from.x|raw }}, y: {{ navigator.connectingWaypoints.from.y|raw }}};
+            // const connectingWaypoints = {{ navigator.connectingWaypoints|json_encode|raw }};
+            //
+            // for (let i = 0; i < connectingWaypoints.connections.length; ++i) {
+            //     let fromPosition = mapCoordinates(fromWaypointCoords.x, fromWaypointCoords.y);
+            //     let toPosition = mapCoordinates(connectingWaypoints.connections[i].x, connectingWaypoints.connections[i].y);
+            //
+            //     context.strokeStyle = 'black';
+            //     context.beginPath();
+            //     context.moveTo(fromPosition.x, fromPosition.y);
+            //     context.lineTo(toPosition.x, toPosition.y);
+            //     context.closePath();
+            //     context.stroke();
+            // }
 
-            context.strokeStyle = 'black';
-            context.beginPath();
-            context.moveTo(fromPosition.x, fromPosition.y);
-            context.lineTo(toPosition.x, toPosition.y);
-            context.closePath();
-            context.stroke();
+            const route = {{ navigator.route|json_encode|raw }};
 
-            let maxX = 0;
-            let maxY = 0;
+            for (let i = 1; i < route.length; ++i) {
+                let fromPosition = mapCoordinates(route[i - 1].x, route[i - 1].y);
+                let toPosition = mapCoordinates(route[i].x, route[i].y);
+
+                context.strokeStyle = 'black';
+                context.beginPath();
+                context.moveTo(fromPosition.x, fromPosition.y);
+                context.lineTo(toPosition.x, toPosition.y);
+                context.closePath();
+                context.stroke();
+            }
 
             for (let i = 0; i < waypoints.length; ++i) {
-                if (Math.abs(waypoints[i].x) > maxX) {
-                    maxX = Math.abs(waypoints[i].x);
-                }
-
-                if (Math.abs(waypoints[i].y) > maxY) {
-                    maxY = Math.abs(waypoints[i].y);
-                }
-
                 let position = mapCoordinates(waypoints[i].x, waypoints[i].y);
 
-                if (['X1-YQ84-A1', 'X1-YQ84-B9'].includes(waypoints[i].waypointSymbol)) {
-                    context.fillStyle = 'red';
-                } else if (waypoints[i].exchange.includes('FUEL')) {
+                if (waypoints[i].exchange.includes('FUEL')) {
                     context.fillStyle = 'orange';
                 } else {
                     context.fillStyle = 'black';
                 }
 
+                let radius = 2.5;
+                if (waypoints[i].waypointSymbol === 'X1-CC10-J64') {
+                    radius = 5.0;
+                }
+
                 context.beginPath();
-                context.arc(position.x, position.y, 2.5, 0, Math.PI * 2);
+                context.arc(position.x, position.y, radius, 0, Math.PI * 2);
                 context.closePath();
                 context.fill();
             }
 
-            console.log(`maxX: ${maxX}, maxY: ${maxY}`);
+            let headquartersCoords = {x: {{ headquarters.x|raw }}, y: {{ headquarters.y|raw }}};
+            let headquartersPosition = mapCoordinates(headquartersCoords.x, headquartersCoords.y);
+
+            context.fillStyle = 'red';
+            context.beginPath();
+            context.arc(headquartersPosition.x, headquartersPosition.y, 5, 0, Math.PI * 2);
+            context.closePath();
+            context.fill();
         });
     </script>
 {% endblock %}
@@ -146,14 +186,14 @@
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <div class="card-text">
-                            <span>Headquarters: {{ agent.headquarters }}</span><br>
+                            <span>Headquarters: {{ headquarters.symbol }}</span><br>
                             <span>Scanned waypoints: {{ scannedWaypoints|length }} / {{ system.waypoints|length }}</span>
                             <hr>
                             <div class="d-flex">
                                 <div>
-                                    <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#system-map" aria-expanded="false" aria-controls="system map">Show System</button>
+                                    <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#system-map" aria-expanded="false" aria-controls="system-map">Show System</button>
                                 </div>
-                                <div id="system-map" class="collapse mx-auto">
+                                <div id="system-map" class="collapsed mx-auto">
                                     <canvas id="system" class="d-block"></canvas>
                                 </div>
                             </div>
