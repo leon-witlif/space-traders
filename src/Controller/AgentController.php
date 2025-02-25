@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Helper\Navigation;
+use App\Navigation\Navigator;
 use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\FactionApi;
@@ -14,9 +15,7 @@ use App\Storage\ContractStorage;
 use App\Storage\WaypointStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
-use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -31,6 +30,7 @@ class AgentController extends AbstractController
         private readonly SystemApi $systemApi,
         private readonly ContractStorage $contractStorage,
         private readonly WaypointStorage $waypointStorage,
+        private readonly Navigator $navigator,
     ) {
     }
 
@@ -41,52 +41,19 @@ class AgentController extends AbstractController
             $agentToken = $request->getSession()->get('agentToken');
 
             $agent = $this->agentApi->get($agentToken);
-            $system = $this->systemApi->get(Navigation::getSystem($agent->headquarters));
 
-            foreach ($system->waypoints as $waypoint) {
-                if (!$this->waypointStorage->get($waypoint['symbol'])) {
-                    $this->waypointStorage->add(['waypointSymbol' => $waypoint['symbol'], 'scanned' => false]);
-                }
-            }
-
-            foreach ($this->waypointStorage->list() as $market) {
-                if (!$market['scanned']) {
-                    $waypointResponse = $this->systemApi->waypoint(Navigation::getSystem($market['waypointSymbol']), Navigation::getWaypoint($market['waypointSymbol']));
-
-                    $data = [
-                        'waypointSymbol' => $market['waypointSymbol'],
-                        'scanned' => true,
-                        'type' => $waypointResponse->type,
-                        'x' => $waypointResponse->x,
-                        'y' => $waypointResponse->y,
-                        'traits' => array_map(fn (array $trait) => $trait['symbol'], $waypointResponse->traits),
-                        'factionSymbol' => $waypointResponse->faction?->symbol,
-                    ];
-
-                    try {
-                        $marketResponse = $this->systemApi->market(Navigation::getSystem($market['waypointSymbol']), Navigation::getWaypoint($market['waypointSymbol']));
-
-                        $data['exports'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exports);
-                        $data['exchange'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exchange);
-                    } catch (ClientException) {
-                        $data['exports'] = [];
-                        $data['exchange'] = [];
-                    }
-
-                    $this->waypointStorage->update($this->waypointStorage->key($market['waypointSymbol']), $data);
-
-                    break;
-                }
-            }
+            $this->navigator->initializeSystem(Navigation::getSystem($agent->headquarters));
+            $this->navigator->scanWaypoint();
 
             $parameters = [
                 'agent' => $agent,
-                'faction' => $this->factionApi->get('COSMIC'),
-                'contracts' => $this->contractApi->list($agentToken),
-                'ships' => $this->shipApi->list($agentToken),
+                'faction' => null/* $this->factionApi->get('COSMIC') */,
+                'contracts' => null/*$this->contractApi->list($agentToken)*/,
+                'ships' => null/*$this->shipApi->list($agentToken)*/,
 
-                'system' => $system,
-                'waypoint' => $this->systemApi->waypoint(Navigation::getSystem($agent->headquarters), Navigation::getWaypoint($agent->headquarters)),
+                'system' => $this->navigator->system,
+                'headquarters' => $this->systemApi->waypoint(Navigation::getSystem($agent->headquarters), Navigation::getWaypoint($agent->headquarters)),
+                'navigator' => $this->navigator->calculateRoute($agent->headquarters, 'X1-CC10-J64'),
 
                 'acceptedContracts' => $this->contractStorage->list(),
                 'scannedWaypoints' => array_values(array_filter($this->waypointStorage->list(), fn (array $market) => $market['scanned'])),
