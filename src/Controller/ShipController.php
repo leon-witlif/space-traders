@@ -30,6 +30,21 @@ class ShipController extends AbstractController
         return $this->redirectToRoute('app.auth.logout');
     }
 
+    #[Route('/ship/{shipSymbol}/refuel', 'app.ship.refuel')]
+    public function refuelAction(Request $request, string $shipSymbol): Response
+    {
+        if ($request->getSession()->get('agentToken')) {
+            $agentToken = $request->getSession()->get('agentToken');
+
+            $this->shipApi->dock($agentToken, $shipSymbol);
+            $this->shipApi->refuel($agentToken, $shipSymbol);
+
+            return $this->redirectToRoute('app.agent.detail');
+        }
+
+        return $this->redirectToRoute('app.auth.logout');
+    }
+
     #[Route('/ship/{shipSymbol}/negotiate', 'app.ship.negotiate')]
     public function negotiateAction(Request $request, string $shipSymbol): Response
     {

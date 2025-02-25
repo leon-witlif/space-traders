@@ -10,12 +10,11 @@ use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\FactionApi;
 use App\SpaceTrader\ShipApi;
+use App\SpaceTrader\Struct\SystemWaypoint;
 use App\SpaceTrader\SystemApi;
 use App\Storage\ContractStorage;
 use App\Storage\WaypointStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -45,40 +44,26 @@ class AgentController extends AbstractController
             $this->navigator->initializeSystem(Navigation::getSystem($agent->headquarters));
             $this->navigator->scanWaypoint();
 
+            $fromWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $agent->headquarters);
+            $toWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === 'X1-YQ84-K84');
+
             $parameters = [
                 'agent' => $agent,
-                'faction' => null/* $this->factionApi->get('COSMIC') */,
-                'contracts' => null/*$this->contractApi->list($agentToken)*/,
-                'ships' => null/*$this->shipApi->list($agentToken)*/,
+                'faction' => $this->factionApi->get('COSMIC'),
+                'contracts' => $this->contractApi->list($agentToken),
+                'ships' => $this->shipApi->list($agentToken),
 
-                'system' => $this->navigator->system,
+                'system' => $this->navigator->getSystem(),
                 'headquarters' => $this->systemApi->waypoint(Navigation::getSystem($agent->headquarters), Navigation::getWaypoint($agent->headquarters)),
-                'navigator' => $this->navigator->calculateRoute($agent->headquarters, 'X1-CC10-J64'),
+                'navigator' => $this->navigator->calculateRoute($fromWaypoint, $toWaypoint),
 
                 'acceptedContracts' => $this->contractStorage->list(),
                 'scannedWaypoints' => array_values(array_filter($this->waypointStorage->list(), fn (array $market) => $market['scanned'])),
-
-                'shipControl' => $this->createShipControlForms(),
             ];
 
             return $this->render('agent.html.twig', dump($parameters));
         }
 
         return $this->redirectToRoute('app.auth.logout');
-    }
-
-    /**
-     * @return array<FormView>
-     */
-    private function createShipControlForms(): array
-    {
-        $flightModeForm = $this->createFormBuilder()
-            ->add('flightMode', ChoiceType::class, ['choices' => ['CRUISE' => 'CRUISE', 'BURN' => 'BURN', 'DRIFT' => 'DRIFT', 'STEALTH' => 'STEALTH']])
-            ->getForm()
-            ->createView();
-
-        return [
-            'flightModeForm' => $flightModeForm,
-        ];
     }
 }

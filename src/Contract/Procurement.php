@@ -8,6 +8,7 @@ use App\Helper\Navigation;
 use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\ShipApi;
+use App\SpaceTrader\Struct\SystemWaypoint;
 use App\SpaceTrader\SystemApi;
 use Symfony\Component\HttpClient\Exception\ClientException;
 
@@ -38,7 +39,7 @@ class Procurement
                 $agent = $this->agentApi->get($agentToken);
                 $system = $this->systemApi->get(Navigation::getSystem($agent->headquarters));
 
-                $asteroid = array_find($system->waypoints, fn (array $waypoint) => $waypoint['type'] === 'ENGINEERED_ASTEROID');
+                $asteroid = array_find($system->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->type === 'ENGINEERED_ASTEROID');
 
                 $this->data['action'] = ProcurementAction::NAVIGATE_TO_ASTEROID->name;
                 $this->data['asteroidSymbol'] = $asteroid['symbol'];

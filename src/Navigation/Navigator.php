@@ -6,6 +6,7 @@ namespace App\Navigation;
 
 use App\Helper\Navigation;
 use App\SpaceTrader\Struct\System;
+use App\SpaceTrader\Struct\SystemWaypoint;
 use App\SpaceTrader\SystemApi;
 use App\Storage\WaypointStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -13,15 +14,23 @@ use Symfony\Component\HttpClient\Exception\ClientException;
 
 class Navigator extends AbstractController
 {
-    public readonly System $system;
-
-    private array $waypoints;
-    private int $ttl;
+    private ?System $system;
+    /** @var array<string> */
+    private array $fuelWaypoints;
 
     public function __construct(
         private readonly SystemApi $systemApi,
         private readonly WaypointStorage $waypointStorage,
     ) {
+        $this->system = null;
+
+        $fuelWaypoints = array_values(array_filter($this->waypointStorage->list(), fn (array $waypoint) => in_array('FUEL', $waypoint['exchange'])));
+        $this->fuelWaypoints = array_map(fn (array $waypoint) => $waypoint['waypointSymbol'], $fuelWaypoints);
+    }
+
+    public function getSystem(): ?System
+    {
+        return $this->system;
     }
 
     public function initializeSystem(string $systemSymbol): void
@@ -29,8 +38,8 @@ class Navigator extends AbstractController
         $this->system = $this->systemApi->get($systemSymbol);
 
         foreach ($this->system->waypoints as $waypoint) {
-            if (!$this->waypointStorage->get($waypoint['symbol'])) {
-                $this->waypointStorage->add(['waypointSymbol' => $waypoint['symbol'], 'scanned' => false]);
+            if (!$this->waypointStorage->get($waypoint->symbol)) {
+                $this->waypointStorage->add(['waypointSymbol' => $waypoint->symbol, 'scanned' => false]);
             }
         }
     }
@@ -68,91 +77,120 @@ class Navigator extends AbstractController
         }
     }
 
-    public function calculateRoute(string $fromWaypointSymbol, string $toWaypointSymbol): array
+    /**
+     * @return array{from: SystemWaypoint, to: SystemWaypoint, route: array<SystemWaypoint>}
+     */
+    public function calculateRoute(SystemWaypoint $from, SystemWaypoint $to): array
     {
-        $fromWaypoint = $this->waypointStorage->get($fromWaypointSymbol);
-        $toWaypoint = $this->waypointStorage->get($toWaypointSymbol);
-
-        $this->waypoints = [$fromWaypoint];
-        $this->ttl = 100;
-
-        $this->findNextWaypoint($fromWaypoint, $toWaypoint);
-
         return [
-            'farthestWaypoint' => $this->findFarthestWaypoint($fromWaypoint),
-            'connectingWaypoints' => [
-                'from' => $fromWaypoint,
-                'connections' => $this->findConnectingWaypoints($fromWaypoint, 300.0),
-            ],
-            'route' => $this->waypoints,
+            'from' => $from,
+            'to' => $to,
+            'route' => $this->findPath($from, $to, [$this, 'distanceBetweenWaypoints']),
         ];
     }
 
-    private function findNextWaypoint($currentWaypoint, $targetWaypoint): void
+    /**
+     * @return array<SystemWaypoint>
+     */
+    private function findPath(SystemWaypoint $start, SystemWaypoint $goal, callable $heuristic): array
     {
-        if (--$this->ttl < 0) {
-            return;
+        $openSet = [$start];
+        $cameFrom = [];
+
+        $gScore = [];
+        foreach ($this->system->waypoints as $waypoint) {
+            $gScore[$waypoint->symbol] = PHP_FLOAT_MAX;
         }
+        $gScore[$start->symbol] = 0;
 
-        $connectingWaypoints = $this->findConnectingWaypoints($currentWaypoint, 300.0);
-        $canReachTarget = false;
+        $fScore = [];
+        foreach ($this->system->waypoints as $waypoint) {
+            $fScore[$waypoint->symbol] = PHP_FLOAT_MAX;
+        }
+        $fScore[$start->symbol] = $heuristic($start, $goal);
 
-        foreach ($connectingWaypoints as $waypoint) {
-            if ($waypoint['waypointSymbol'] === $targetWaypoint['waypointSymbol']) {
-                $canReachTarget = true;
-                break;
+        do {
+            $current = $this->lowestScoreWaypoint($openSet, $fScore);
+            if ($current->symbol === $goal->symbol) {
+                return $this->reconstructPath($cameFrom, $current);
             }
-        }
 
-        // dump($currentWaypoint, $connectingWaypoints);
+            $currentKey = array_find_key($openSet, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $current->symbol);
+            array_splice($openSet, $currentKey, 1);
+            $openSet = array_values($openSet);
 
-        $closestDistanceToTarget = 1000.0;
-        $closestWaypointToTarget = [];
+            foreach ($this->findNeighboringWaypoints($current, 200.0) as $neighbor) {
+                $tentativeGScore = $gScore[$current->symbol] + $this->addWeight($this->distanceBetweenWaypoints($current, $neighbor), $neighbor);
 
-        foreach ($connectingWaypoints as $waypoint) {
-            $distance = $this->distanceBetweenWaypoints($waypoint['x'], $waypoint['y'], $targetWaypoint['x'], $targetWaypoint['y']);
-            if ($distance < $closestDistanceToTarget) {
-                $closestDistanceToTarget = $distance;
-                $closestWaypointToTarget = $waypoint;
+                if ($tentativeGScore < $gScore[$neighbor->symbol]) {
+                    $cameFrom[$neighbor->symbol] = $current;
+
+                    $gScore[$neighbor->symbol] = $tentativeGScore;
+                    $fScore[$neighbor->symbol] = $tentativeGScore + $heuristic($neighbor, $goal);
+
+                    if (!array_find($openSet, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $neighbor->symbol)) {
+                        $openSet[] = $neighbor;
+                    }
+                }
             }
-        }
+        } while (count($openSet));
 
-        // dump($closestDistanceToTarget, $closestWaypointToTarget);
-        // dd();
-
-        $this->waypoints[] = $closestWaypointToTarget;
-
-        if (!$canReachTarget) {
-            $this->findNextWaypoint($closestWaypointToTarget, $targetWaypoint);
-        }
+        return [];
     }
 
-    private function findFarthestWaypoint(array $fromWaypoint): string
+    /**
+     * @param array<string, SystemWaypoint> $cameFrom
+     * @return array<SystemWaypoint>
+     */
+    private function reconstructPath(array $cameFrom, SystemWaypoint $current): array
     {
-        $scannedWaypoints = array_values(array_filter($this->waypointStorage->list(), fn (array $market) => $market['scanned']));
+        $totalPath = [$current];
 
-        $farthestDistance = .0;
-        $farthestWaypoint = [];
+        while (array_key_exists($current->symbol, $cameFrom)) {
+            $current = $cameFrom[$current->symbol];
+            array_unshift($totalPath, $current);
+        }
 
-        foreach ($scannedWaypoints as $waypoint) {
-            $distance = $this->distanceBetweenWaypoints($fromWaypoint['x'], $fromWaypoint['y'], $waypoint['x'], $waypoint['y']);
-            if ($distance > $farthestDistance) {
-                $farthestDistance = $distance;
-                $farthestWaypoint = $waypoint;
+        return $totalPath;
+    }
+
+    /**
+     * @param array<SystemWaypoint> $openSet
+     * @param array<float> $fScore
+     */
+    private function lowestScoreWaypoint(array $openSet, array $fScore): SystemWaypoint
+    {
+        $lowestScore = PHP_FLOAT_MAX;
+        $lowestWaypoint = null;
+
+        foreach ($openSet as $waypoint) {
+            if ($fScore[$waypoint->symbol] < $lowestScore) {
+                $lowestScore = $fScore[$waypoint->symbol];
+                $lowestWaypoint = $waypoint;
             }
         }
 
-        return $farthestWaypoint['waypointSymbol'];
+        return $lowestWaypoint;
     }
 
-    private function findConnectingWaypoints(array $fromWaypoint, float $maxDistance): array
+    private function addWeight(float $distance, SystemWaypoint $waypoint): float
     {
-        $scannedWaypoints = array_values(array_filter($this->waypointStorage->list(), fn (array $market) => $market['scanned']));
+        if (in_array($waypoint->symbol, $this->fuelWaypoints)) {
+            return $distance * 0.8;
+        }
 
+        return $distance;
+    }
+
+    /**
+     * @return array<SystemWaypoint>
+     */
+    private function findNeighboringWaypoints(SystemWaypoint $from, float $maxDistance): array
+    {
         $connectingWaypoints = [];
 
-        foreach ($scannedWaypoints as $waypoint) {
-            $distance = $this->distanceBetweenWaypoints($fromWaypoint['x'], $fromWaypoint['y'], $waypoint['x'], $waypoint['y']);
+        foreach ($this->system->waypoints as $waypoint) {
+            $distance = $this->distanceBetweenWaypoints($from, $waypoint);
             if ($distance <= $maxDistance) {
                 $connectingWaypoints[] = $waypoint;
             }
@@ -161,8 +199,8 @@ class Navigator extends AbstractController
         return $connectingWaypoints;
     }
 
-    private function distanceBetweenWaypoints(int $fromX, int $fromY, int $toX, int $toY): float
+    private function distanceBetweenWaypoints(SystemWaypoint $from, SystemWaypoint $to): float
     {
-        return sqrt(pow($toX - $fromX, 2) + pow($toY - $fromY, 2));
+        return sqrt(pow($to->x - $from->x, 2) + pow($to->y - $from->y, 2));
     }
 }

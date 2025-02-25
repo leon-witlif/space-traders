@@ -83,64 +83,56 @@
             RANGE = (hundredth(Math.max(maxX, maxY)) + 1) * 100 + 50;
 
             console.log(`maxX: ${maxX}, maxY: ${maxY}`);
-            console.log(RANGE);
+            console.log(`range: ${RANGE}`);
 
-            const mapPixel = (coord, min, max, size) => {
-                return ((coord - min) / (max - min)) * size;
+            const mapCoordinateToPixel = (coordinate, min, max, size) => {
+                return ((coordinate - min) / (max - min)) * size;
             };
 
-            const mapCoordinates = (x, y) => {
-                return {x: mapPixel(x, -RANGE, RANGE, SIZE), y: mapPixel(y, -RANGE, RANGE, SIZE)};
+            const mapCoordinatesToPixels = (x, y) => {
+                return {
+                    px: mapCoordinateToPixel(x, -RANGE, RANGE, SIZE),
+                    py: mapCoordinateToPixel(y, -RANGE, RANGE, SIZE)
+                };
             };
 
-            const calculateDistance = (x1, y1, x2, y2) => {
-                return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            const mapPixelToCoordinate = (pixel, min, max, size) => {
+                return (pixel / size) * (max - min) + min;
             };
 
-            const from = {x: 24, y: -13};
-            const to = {x: 319, y: 86};
-
-            console.log(calculateDistance(from.x, from.y, to.x, to.y));
+            const mapPixelsToCoordinates = (px, py) => {
+                return {
+                    x: Math.floor(mapPixelToCoordinate(px, -RANGE, RANGE, SIZE)),
+                    y: Math.floor(mapPixelToCoordinate(py, -RANGE, RANGE, SIZE))
+                };
+            };
 
             const systemCanvas = document.getElementById('system');
             systemCanvas.width = SIZE;
+            systemCanvas.style.width = `${SIZE}px`;
             systemCanvas.height = SIZE;
+            systemCanvas.style.height = `${SIZE}px`;
             const context = systemCanvas.getContext('2d');
 
             context.fillStyle = 'white';
             context.fillRect(0, 0, 800, 800);
 
-            // const fromWaypointCoords = {x: {{ navigator.connectingWaypoints.from.x|raw }}, y: {{ navigator.connectingWaypoints.from.y|raw }}};
-            // const connectingWaypoints = {{ navigator.connectingWaypoints|json_encode|raw }};
-            //
-            // for (let i = 0; i < connectingWaypoints.connections.length; ++i) {
-            //     let fromPosition = mapCoordinates(fromWaypointCoords.x, fromWaypointCoords.y);
-            //     let toPosition = mapCoordinates(connectingWaypoints.connections[i].x, connectingWaypoints.connections[i].y);
-            //
-            //     context.strokeStyle = 'black';
-            //     context.beginPath();
-            //     context.moveTo(fromPosition.x, fromPosition.y);
-            //     context.lineTo(toPosition.x, toPosition.y);
-            //     context.closePath();
-            //     context.stroke();
-            // }
-
             const route = {{ navigator.route|json_encode|raw }};
 
             for (let i = 1; i < route.length; ++i) {
-                let fromPosition = mapCoordinates(route[i - 1].x, route[i - 1].y);
-                let toPosition = mapCoordinates(route[i].x, route[i].y);
+                let fromPosition = mapCoordinatesToPixels(route[i - 1].x, route[i - 1].y);
+                let toPosition = mapCoordinatesToPixels(route[i].x, route[i].y);
 
                 context.strokeStyle = 'black';
                 context.beginPath();
-                context.moveTo(fromPosition.x, fromPosition.y);
-                context.lineTo(toPosition.x, toPosition.y);
+                context.moveTo(fromPosition.px, fromPosition.py);
+                context.lineTo(toPosition.px, toPosition.py);
                 context.closePath();
                 context.stroke();
             }
 
             for (let i = 0; i < waypoints.length; ++i) {
-                let position = mapCoordinates(waypoints[i].x, waypoints[i].y);
+                let position = mapCoordinatesToPixels(waypoints[i].x, waypoints[i].y);
 
                 if (waypoints[i].exchange.includes('FUEL')) {
                     context.fillStyle = 'orange';
@@ -149,24 +141,78 @@
                 }
 
                 let radius = 2.5;
-                if (waypoints[i].waypointSymbol === 'X1-CC10-J64') {
+                if (waypoints[i].waypointSymbol === {{ navigator.to.symbol|json_encode|raw }}) {
                     radius = 5.0;
                 }
 
                 context.beginPath();
-                context.arc(position.x, position.y, radius, 0, Math.PI * 2);
+                context.arc(position.px, position.py, radius, 0, Math.PI * 2);
                 context.closePath();
                 context.fill();
             }
 
             let headquartersCoords = {x: {{ headquarters.x|raw }}, y: {{ headquarters.y|raw }}};
-            let headquartersPosition = mapCoordinates(headquartersCoords.x, headquartersCoords.y);
+            let headquartersPosition = mapCoordinatesToPixels(headquartersCoords.x, headquartersCoords.y);
 
             context.fillStyle = 'red';
             context.beginPath();
-            context.arc(headquartersPosition.x, headquartersPosition.y, 5, 0, Math.PI * 2);
+            context.arc(headquartersPosition.px, headquartersPosition.py, 5, 0, Math.PI * 2);
             context.closePath();
             context.fill();
+
+            const clickedWaypointElement = document.getElementById('clickedWaypoint');
+
+            systemCanvas.addEventListener('mousedown', event => {
+                let rect = systemCanvas.getBoundingClientRect();
+
+                let position = {
+                    px: Math.floor(event.clientX - rect.left),
+                    py: Math.floor(event.clientY - rect.top)
+                };
+
+                let coordinates = mapPixelsToCoordinates(position.px, position.py);
+                let search = [];
+
+                for (let i = -5; i <= 5; ++i) {
+                    for (let j = -5; j <= 5; ++j) {
+                        search.push({x: coordinates.x + i, y: coordinates.y + j});
+                    }
+                }
+
+                let matches = [];
+
+                for (let i = 0; i < waypoints.length; ++i) {
+                    for (let j = 0; j < search.length; j++) {
+                        if (waypoints[i].x === search[j].x && waypoints[i].y === search[j].y) {
+                            matches.push(waypoints[i]);
+                            break;
+                        }
+                    }
+                }
+
+                let html = '';
+
+                for (let i = 0; i < matches.length; ++i) {
+                    html += `<div class="mb-3">`;
+                    html += `Waypoint: ${matches[i].waypointSymbol}<br>`;
+                    html += `Type: ${matches[i].type}<br>`;
+                    html += `Traits:<br>`
+                    html += `<ul class="mb-0">`;
+                    for (let j = 0; j < matches[i].traits.length; j++) {
+                        html += `<li>${matches[i].traits[j]}</li>`;
+                    }
+                    html += `</ul>`;
+                    html += `Exchange:<br>`
+                    html += `<ul class="mb-0">`;
+                    for (let j = 0; j < matches[i].exchange.length; j++) {
+                        html += `<li>${matches[i].exchange[j]}</li>`;
+                    }
+                    html += `</ul>`;
+                    html += `</div>`;
+                }
+
+                clickedWaypointElement.innerHTML = html;
+            });
         });
     </script>
 {% endblock %}
@@ -193,14 +239,14 @@
                                 <div>
                                     <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#system-map" aria-expanded="false" aria-controls="system-map">Show System</button>
                                 </div>
-                                <div id="system-map" class="collapsed flex-grow-1">
+                                <div id="system-map" class="collapse {#show#} flex-grow-1">
                                     <div class="d-flex justify-content-evenly">
                                         <canvas id="system" class="d-block"></canvas>
                                         <div>
                                             <h4>Ship Controls</h4>
-
-                                            {% form_theme shipControl.flightModeForm 'bootstrap_5_layout.html.twig' %}
-                                            {{ form(shipControl.flightModeForm) }}
+                                            <a class="btn btn-sm btn-primary" href="{{ path('app.ship.refuel', {'shipSymbol': ships[0].symbol}) }}">Refuel</a>
+                                            <hr>
+                                            <div id="clickedWaypoint"></div>
                                         </div>
                                     </div>
                                 </div>

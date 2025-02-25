@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace App\SpaceTrader\Struct;
 
-readonly class System
+readonly class SystemWaypoint
 {
     use FromRequestTrait;
 
+    /** @phpstan-ignore-next-line missingType.iterableValue */
     public function __construct(
         public string $symbol,
-        public string $sectorSymbol,
         public string $type,
         public int $x,
         public int $y,
-        /** @var array<SystemWaypoint> */
-        public array $waypoints,
-        /** @var array<string> Array of Symbols */
-        public array $factions,
+        public array $orbitals,
+        public ?string $orbits,
     ) {
     }
 }
