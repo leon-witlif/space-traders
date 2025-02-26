@@ -12,8 +12,12 @@ class FactionApi
     {
     }
 
-    public function get(string $factionSymbol): Faction
+    public function get(string $factionSymbol, bool $disableCache = false): Faction
     {
+        if (!$disableCache) {
+            $this->apiClient->prepareRequestCache("faction-$factionSymbol");
+        }
+
         $response = $this->apiClient->makeAccountRequest('GET', "/factions/$factionSymbol");
 
         return Faction::fromResponse($response['data']);

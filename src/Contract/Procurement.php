@@ -42,7 +42,7 @@ class Procurement
                 $asteroid = array_find($system->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->type === 'ENGINEERED_ASTEROID');
 
                 $this->data['action'] = ProcurementAction::NAVIGATE_TO_ASTEROID->name;
-                $this->data['asteroidSymbol'] = $asteroid['symbol'];
+                $this->data['asteroidSymbol'] = $asteroid->symbol;
 
                 return;
             case ProcurementAction::NAVIGATE_TO_ASTEROID:
@@ -54,11 +54,13 @@ class Procurement
 
                 return;
             case ProcurementAction::REFUEL_SHIP:
-                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol, true);
 
                 if ($ship->nav->status !== 'IN_ORBIT') {
                     return;
                 }
+
+                unset($this->data['arrival']);
 
                 $this->shipApi->dock($agentToken, $shipSymbol);
                 $this->shipApi->refuel($agentToken, $shipSymbol);
@@ -68,13 +70,13 @@ class Procurement
 
                 return;
             case ProcurementAction::EXTRACT_ASTEROID:
-                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol, true);
 
                 if ($ship->cooldown->remainingSeconds > 0) {
                     return;
                 }
 
-                $contract = $this->contractApi->get($agentToken, $contractId);
+                $contract = $this->contractApi->get($agentToken, $contractId, true);
 
                 $extractResponse = $this->shipApi->extract($agentToken, $shipSymbol);
 
@@ -92,8 +94,8 @@ class Procurement
 
                 return;
             case ProcurementAction::JETTISON_CARGO:
-                $contract = $this->contractApi->get($agentToken, $contractId);
-                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+                $contract = $this->contractApi->get($agentToken, $contractId, true);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol, true);
 
                 $contractItem = $contract->terms['deliver'][0];
 
@@ -117,8 +119,8 @@ class Procurement
 
                 throw new \RuntimeException('Tried to jettison no cargo');
             case ProcurementAction::SELL_CARGO:
-                $contract = $this->contractApi->get($agentToken, $contractId);
-                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+                $contract = $this->contractApi->get($agentToken, $contractId, true);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol, true);
 
                 $contractItem = $contract->terms['deliver'][0];
 
@@ -136,7 +138,7 @@ class Procurement
 
                 $this->shipApi->orbit($agentToken, $shipSymbol);
 
-                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol, true);
 
                 $cargoItem = array_find($ship->cargo->inventory, fn (array $item) => $item['symbol'] === $contractItem['tradeSymbol']);
 
@@ -146,7 +148,7 @@ class Procurement
 
                 return;
             case ProcurementAction::NAVIGATE_TO_DELIVERY:
-                $contract = $this->contractApi->get($agentToken, $contractId);
+                $contract = $this->contractApi->get($agentToken, $contractId, true);
 
                 $navigateResponse = $this->shipApi->navigate($agentToken, $shipSymbol, $contract->terms['deliver'][0]['destinationSymbol']);
 
@@ -155,13 +157,13 @@ class Procurement
 
                 return;
             case ProcurementAction::DELIVER_CARGO:
-                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol, true);
 
                 if ($ship->nav->status !== 'IN_ORBIT') {
                     return;
                 }
 
-                $contract = $this->contractApi->get($agentToken, $contractId);
+                $contract = $this->contractApi->get($agentToken, $contractId, true);
 
                 $this->shipApi->dock($agentToken, $shipSymbol);
 
@@ -170,7 +172,7 @@ class Procurement
 
                 $this->contractApi->deliver($agentToken, $contract->id, $shipSymbol, $cargoItem['symbol'], $cargoItem['units']);
 
-                $contract = $this->contractApi->get($agentToken, $contractId);
+                $contract = $this->contractApi->get($agentToken, $contractId, true);
                 $contractItem = $contract->terms['deliver'][0];
 
                 if ($contractItem['unitsFulfilled'] < $contractItem['unitsRequired']) {
@@ -183,7 +185,7 @@ class Procurement
 
                 return;
             case ProcurementAction::NAVIGATE_TO_HEADQUARTERS:
-                $agent = $this->agentApi->get($agentToken);
+                $agent = $this->agentApi->get($agentToken, true);
 
                 $navigateResponse = $this->shipApi->navigate($agentToken, $shipSymbol, $agent->headquarters);
 
@@ -192,7 +194,7 @@ class Procurement
 
                 return;
             case ProcurementAction::FINISH_CONTRACT:
-                $ship = $this->shipApi->get($agentToken, $shipSymbol);
+                $ship = $this->shipApi->get($agentToken, $shipSymbol, true);
 
                 if ($ship->nav->status !== 'IN_ORBIT') {
                     return;

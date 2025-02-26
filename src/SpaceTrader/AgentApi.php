@@ -12,8 +12,12 @@ class AgentApi
     {
     }
 
-    public function get(string $token): Agent
+    public function get(string $token, bool $disableCache = false): Agent
     {
+        if (!$disableCache) {
+            $this->apiClient->prepareRequestCache("agent-$token");
+        }
+
         $response = $this->apiClient->makeAgentRequest('GET', '/my/agent', $token);
 
         return Agent::fromResponse($response['data']);

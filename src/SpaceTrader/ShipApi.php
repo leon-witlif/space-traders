@@ -18,15 +18,23 @@ class ShipApi
     /**
      * @return array<Ship>
      */
-    public function list(string $token): array
+    public function list(string $token, bool $disableCache = false): array
     {
+        if (!$disableCache) {
+            $this->apiClient->prepareRequestCache('ship-list');
+        }
+
         $response = $this->apiClient->makeAgentRequest('GET', '/my/ships', $token);
 
         return array_map(fn (array $ship) => Ship::fromResponse($ship), $response['data']);
     }
 
-    public function get(string $token, string $shipSymbol): Ship
+    public function get(string $token, string $shipSymbol, bool $disableCache = false): Ship
     {
+        if (!$disableCache) {
+            $this->apiClient->prepareRequestCache("ship-$shipSymbol");
+        }
+
         $response = $this->apiClient->makeAgentRequest('GET', "/my/ships/$shipSymbol", $token);
 
         return Ship::fromResponse($response['data']);
@@ -34,11 +42,15 @@ class ShipApi
 
     public function orbit(string $token, string $shipSymbol): void
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/orbit", $token);
     }
 
     public function dock(string $token, string $shipSymbol): void
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/dock", $token);
     }
 
@@ -52,6 +64,8 @@ class ShipApi
      */
     public function extract(string $token, string $shipSymbol): array
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $response = $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/extract", $token);
         $content = $response['data'];
 
@@ -62,6 +76,8 @@ class ShipApi
 
     public function jettison(string $token, string $shipSymbol, string $symbol, int $units): ShipCargo
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $data = [
             'symbol' => $symbol,
             'units' => $units,
@@ -81,6 +97,8 @@ class ShipApi
      */
     public function navigate(string $token, string $shipSymbol, string $waypointSymbol): array
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $data = [
             'waypointSymbol' => $waypointSymbol,
         ];
@@ -95,6 +113,8 @@ class ShipApi
 
     public function nav(string $token, string $shipSymbol, string $flightMode): void
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $data = [
             'flightMode' => $flightMode,
         ];
@@ -104,6 +124,8 @@ class ShipApi
 
     public function sell(string $token, string $shipSymbol, string $symbol, int $units): void
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $data = [
             'symbol' => $symbol,
             'units' => $units,
@@ -114,11 +136,15 @@ class ShipApi
 
     public function refuel(string $token, string $shipSymbol): void
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/refuel", $token);
     }
 
     public function negotiate(string $token, string $shipSymbol): void
     {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
         $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/negotiate/contract", $token);
     }
 }
