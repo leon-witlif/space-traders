@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Helper\Navigation;
+use App\Loader\ShipLoader;
 use App\Navigation\Navigator;
 use App\SpaceTrader\AgentApi;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\FactionApi;
-use App\SpaceTrader\ShipApi;
 use App\SpaceTrader\Struct\SystemWaypoint;
 use App\SpaceTrader\SystemApi;
 use App\Storage\ContractStorage;
@@ -25,7 +25,7 @@ class AgentController extends AbstractController
         private readonly AgentApi $agentApi,
         private readonly FactionApi $factionApi,
         private readonly ContractApi $contractApi,
-        private readonly ShipApi $shipApi,
+        private readonly ShipLoader $shipLoader,
         private readonly SystemApi $systemApi,
         private readonly ContractStorage $contractStorage,
         private readonly WaypointStorage $waypointStorage,
@@ -44,14 +44,16 @@ class AgentController extends AbstractController
             $this->navigator->initializeSystem(Navigation::getSystem($agent->headquarters));
             $this->navigator->scanWaypoint();
 
-            $fromWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $agent->headquarters);
-            $toWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === 'X1-YQ84-K84');
+            $ship = $this->shipLoader->get('AGENT_SIX-1');
+
+            $fromWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $ship->nav->route->origin->symbol);
+            $toWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $ship->nav->route->destination->symbol);
 
             $parameters = [
                 'agent' => $agent,
                 'faction' => $this->factionApi->get('COSMIC'),
                 'contracts' => $this->contractApi->list($agentToken),
-                'ships' => $this->shipApi->list($agentToken),
+                'ships' => $this->shipLoader->list(),
 
                 'system' => $this->navigator->getSystem(),
                 'headquarters' => $this->systemApi->waypoint(Navigation::getSystem($agent->headquarters), Navigation::getWaypoint($agent->headquarters)),

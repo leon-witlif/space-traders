@@ -176,7 +176,7 @@ class Navigator extends AbstractController
     private function addWeight(float $distance, SystemWaypoint $waypoint): float
     {
         if (in_array($waypoint->symbol, $this->fuelWaypoints)) {
-            return $distance * 0.8;
+            return $distance * 0.25;
         }
 
         return $distance;
@@ -185,7 +185,7 @@ class Navigator extends AbstractController
     /**
      * @return array<SystemWaypoint>
      */
-    private function findNeighboringWaypoints(SystemWaypoint $from, float $maxDistance): array
+    private function findNeighboringWaypoints(SystemWaypoint $from, float $maxDistance = 200.0): array
     {
         $connectingWaypoints = [];
 
