@@ -12,16 +12,22 @@ use App\SpaceTrader\Struct\SystemWaypoint;
 use App\SpaceTrader\SystemApi;
 use Symfony\Component\HttpClient\Exception\ClientException;
 
-class Procurement
+class Procurement extends Contract
 {
     public function __construct(
         private readonly AgentApi $agentApi,
         private readonly ContractApi $contractApi,
         private readonly ShipApi $shipApi,
         private readonly SystemApi $systemApi,
-        /** @var array{action: string, asteroidSymbol?: string, arrival?: string} */
-        private array $data,
     ) {
+        parent::__construct(
+            [
+                AgentApi::class => $this->agentApi,
+                ContractApi::class => $this->contractApi,
+                ShipApi::class => $this->shipApi,
+                SystemApi::class => $this->systemApi,
+            ]
+        );
     }
 
     /**
