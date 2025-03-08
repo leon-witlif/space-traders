@@ -6,7 +6,7 @@ namespace App\Contract;
 
 trait ListBehaviour
 {
-    protected function insertBefore(Task $task): void
+    public function insertBefore(Task $task): void
     {
         $tempPrevious = $this->previous;
 
@@ -19,7 +19,7 @@ trait ListBehaviour
         }
     }
 
-    protected function insertAfter(Task $task): void
+    public function insertAfter(Task $task): void
     {
         $tempNext = $this->next;
 

@@ -6,6 +6,7 @@ namespace App\Contract\Task;
 
 use App\Contract\Contract;
 use App\Contract\Task;
+use App\SpaceTrader\Struct\SystemWaypoint;
 
 final class FindAsteroidTask extends Task
 {
@@ -14,29 +15,25 @@ final class FindAsteroidTask extends Task
         parent::__construct($contract);
     }
 
-    protected function getName(): string
-    {
-        return self::class;
-    }
-
+    /**
+     * @return array<int, string>
+     */
     protected function getArgs(): array
     {
         return [$this->type];
     }
 
-    public function execute(string $agentToken): mixed
+    public function execute(string $agentToken, mixed &$output): void
     {
-        // $agent = $this->contract->getApi(AgentApi::class)->get($agentToken);
-        // $system = $this->contract->getApi(SystemApi::class)->get(Navigation::getSystem($agent->headquarters));
-        //
-        // $asteroid = array_find($system->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->type === $this->type);
-        //
-        // return $asteroid->symbol;
+        $agent = $this->getAgent($agentToken);
+        $system = $this->getSystem($agent->headquarters);
 
-        $this->finished = true;
+        $asteroid = array_find($system->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->type === $this->type);
 
-        $this->insertAfter($this->contract->createTask(NavigateToTask::class, 'waypointSymbol'));
+        if ($asteroid) {
+            $this->insertAfter($this->contract->createTask(NavigateToTask::class, $this->contract->shipSymbol, $asteroid->symbol));
 
-        return null;
+            $this->finished = true;
+        }
     }
 }

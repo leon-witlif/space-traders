@@ -24,7 +24,9 @@ class Navigator extends AbstractController
     ) {
         $this->system = null;
 
-        $fuelWaypoints = array_values(array_filter($this->waypointStorage->list(), fn (array $waypoint) => in_array('FUEL', $waypoint['exchange'])));
+        $scannedWaypoints = array_values(array_filter($this->waypointStorage->list(), fn (array $waypoint) => $waypoint['scanned']));
+        $fuelWaypoints = array_values(array_filter($scannedWaypoints, fn (array $waypoint) => in_array('FUEL', $waypoint['exchange'])));
+
         $this->fuelWaypoints = array_map(fn (array $waypoint) => $waypoint['waypointSymbol'], $fuelWaypoints);
     }
 

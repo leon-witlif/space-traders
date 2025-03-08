@@ -44,10 +44,10 @@ class AgentController extends AbstractController
             $this->navigator->initializeSystem(Navigation::getSystem($agent->headquarters));
             $this->navigator->scanWaypoint();
 
-            $ship = $this->shipLoader->get('AGENT_SIX-1');
+            // $ship = $this->shipLoader->get('AGENT_SIX-1');
 
-            $fromWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $ship->nav->route->origin->symbol);
-            $toWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $ship->nav->route->destination->symbol);
+            // $fromWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $ship->nav->route->origin->symbol);
+            // $toWaypoint = array_find($this->navigator->getSystem()->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->symbol === $ship->nav->route->destination->symbol);
 
             $parameters = [
                 'agent' => $agent,
@@ -57,7 +57,7 @@ class AgentController extends AbstractController
 
                 'system' => $this->navigator->getSystem(),
                 'headquarters' => $this->systemApi->waypoint(Navigation::getSystem($agent->headquarters), Navigation::getWaypoint($agent->headquarters)),
-                'navigator' => $this->navigator->calculateRoute($fromWaypoint, $toWaypoint),
+                // 'navigator' => $this->navigator->calculateRoute($fromWaypoint, $toWaypoint),
 
                 'acceptedContracts' => $this->contractStorage->list(),
                 'scannedWaypoints' => array_values(array_filter($this->waypointStorage->list(), fn (array $market) => $market['scanned'])),

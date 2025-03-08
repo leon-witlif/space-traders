@@ -16,7 +16,7 @@ class GlobalApi
     }
 
     /**
-     * @return array{agent: Agent, contract: Contract, faction: Faction, ship: Ship, token: string}
+     * @return array{agent: Agent, contract: Contract, faction: Faction, token: string}
      */
     public function register(string $faction, string $symbol, string $email = ''): array
     {
@@ -32,7 +32,6 @@ class GlobalApi
         $content['agent'] = Agent::fromResponse($content['agent']);
         $content['contract'] = Contract::fromResponse($content['contract']);
         $content['faction'] = Faction::fromResponse($content['faction']);
-        $content['ship'] = Ship::fromResponse($content['ship']);
 
         return $content;
     }

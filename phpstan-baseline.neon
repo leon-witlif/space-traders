@@ -1,0 +1,31 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property App\\Contract\\Procurement\:\:\$agentApi\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Contract/Procurement.php
+
+		-
+			message: '#^Access to an undefined property App\\Contract\\Procurement\:\:\$contractApi\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Contract/Procurement.php
+
+		-
+			message: '#^Access to an undefined property App\\Contract\\Procurement\:\:\$data\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Contract/Procurement.php
+
+		-
+			message: '#^Access to an undefined property App\\Contract\\Procurement\:\:\$shipApi\.$#'
+			identifier: property.notFound
+			count: 7
+			path: src/Contract/Procurement.php
+
+		-
+			message: '#^Method App\\Contract\\Procurement\:\:wouldCargoFulfillContract\(\) has parameter \$contractItem with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Contract/Procurement.php

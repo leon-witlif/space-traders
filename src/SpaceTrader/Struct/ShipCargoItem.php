@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\SpaceTrader\Struct;
 
-readonly class ShipCargo
+readonly class ShipCargoItem
 {
     use FromRequestTrait;
 
     public function __construct(
-        public int $capacity,
+        public string $symbol,
+        public string $name,
+        public string $description,
         public int $units,
-        /** @var array<ShipCargoItem> */
-        public array $inventory,
     ) {
     }
 }

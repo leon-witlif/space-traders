@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Contract\Procurement;
-use App\Contract\ProcurementAction;
-use App\SpaceTrader\AgentApi;
+use App\Contract\ContractFactory;
+use App\Contract\Task\FindAsteroidTask;
 use App\SpaceTrader\ContractApi;
 use App\SpaceTrader\ShipApi;
-use App\SpaceTrader\SystemApi;
 use App\Storage\ContractStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,11 +17,10 @@ use Symfony\Component\Routing\Attribute\Route;
 class ContractController extends AbstractController
 {
     public function __construct(
-        private readonly AgentApi $agentApi,
         private readonly ContractApi $contractApi,
         private readonly ShipApi $shipApi,
-        private readonly SystemApi $systemApi,
         private readonly ContractStorage $contractStorage,
+        private readonly ContractFactory $contractFactory,
     ) {
     }
 
@@ -36,7 +33,17 @@ class ContractController extends AbstractController
 
         $ship = $this->shipApi->list($agentToken)[0];
 
-        $this->contractStorage->add(['agentToken' => $agentToken, 'contractId' => $contractId, 'shipSymbol' => $ship->symbol, 'data' => ['action' => ProcurementAction::FIND_ASTEROID->name]]);
+        $contract = $this->contractFactory->createProcurementContract($agentToken, $contractId, $ship->symbol);
+        $contract->setRootTask(FindAsteroidTask::class, 'ENGINEERED_ASTEROID');
+
+        $this->contractStorage->add(
+            [
+                'agentToken' => $agentToken,
+                'contractId' => $contractId,
+                'shipSymbol' => $ship->symbol,
+                'tasks' => $contract,
+            ]
+        );
 
         return $this->redirectToRoute('app.agent.detail');
     }
@@ -44,6 +51,7 @@ class ContractController extends AbstractController
     #[Route('/contract/{contractId}/run', 'app.contract.run')]
     public function runAction(string $contractId): Response
     {
+        /*
         $acceptedContract = $this->contractStorage->get($contractId);
         $agentToken = $acceptedContract['agentToken'];
 
@@ -58,6 +66,7 @@ class ContractController extends AbstractController
             $data = ['agentToken' => $agentToken, 'contractId' => $contractId, 'shipSymbol' => $acceptedContract['shipSymbol'], 'data' => $procurement->getData()];
             $this->contractStorage->update($this->contractStorage->key($contractId), $data);
         }
+        */
 
         return $this->redirectToRoute('app.agent.detail');
     }

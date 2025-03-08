@@ -245,8 +245,8 @@
                                 </div>
                                 <div id="system-map" class="collapse {# show #} flex-grow-1">
                                     <div class="d-flex justify-content-evenly">
-                                        <canvas id="system" class="d-block"></canvas>
-                                        <div>
+                                        <canvas id="system" class="d-block mx-3"></canvas>
+                                        <div class="flex-grow-1">
                                             <h4>Ship Controls</h4>
                                             <a class="btn btn-sm btn-primary" href="{{ path('app.ship.refuel', {'shipSymbol': ships[0].symbol}) }}">Refuel</a>
                                             <hr>
@@ -328,7 +328,7 @@
                                     <span>Deadline: {{ contract.terms.deadline|date('d.m.Y H:i:s') }}</span><br>
                                     <div class="d-flex mt-2">
                                         <button class="btn btn-sm btn-primary me-2" disabled>{% if not contract.fulfilled %}Contract is underway{% else %}Fulfilled{% endif %}</button>
-                                        {% if not contract.fulfilled %}
+                                        {# {% if not contract.fulfilled %}
                                             {% set acceptedContract = acceptedContracts|find(c => c.contractId == contract.id) %}
                                             <a id="run-action-button" class="btn btn-sm btn-primary" href="{{ path('app.contract.run', {'contractId': contract.id}) }}">Run action</a>
                                             {% if acceptedContract.data.action in ['NAVIGATE_TO_ASTEROID', 'REFUEL_SHIP', 'EXTRACT_ASTEROID', 'JETTISON_CARGO', 'SELL_CARGO', 'NAVIGATE_TO_DELIVERY', 'DELIVER_CARGO'] %}
@@ -337,7 +337,7 @@
                                                     <label class="form-check-label" for="automation">Enable automation</label>
                                                 </div>
                                             {% endif %}
-                                        {% endif %}
+                                        {% endif %} #}
                                     </div>
                                 {% else %}
                                     <span>Expires after: {{ contract.deadlineToAccept|date('d.m.Y H:i:s') }}</span><br>
@@ -347,7 +347,7 @@
                                     {% set acceptedContract = acceptedContracts|find(c => c.contractId == contract.id) %}
                                     <hr>
                                     <span>Ship: {{ acceptedContract.shipSymbol }}</span><br>
-                                    <span data-action="{{ acceptedContract.data.action }}">Action: {{ acceptedContract.data.action }}</span><br>
+                                    {# <span data-action="{{ acceptedContract.data.action }}">Action: {{ acceptedContract.data.action }}</span><br> #}
                                     {% if acceptedContract.data.asteroidSymbol|default %}
                                         <span>Asteroid: {{ acceptedContract.data.asteroidSymbol }}</span><br>
                                     {% endif %}

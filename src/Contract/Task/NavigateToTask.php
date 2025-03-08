@@ -6,36 +6,44 @@ namespace App\Contract\Task;
 
 use App\Contract\Contract;
 use App\Contract\Task;
+use App\SpaceTrader\ShipApi;
 
 final class NavigateToTask extends Task
 {
-    public function __construct(Contract $contract, private readonly string $destination)
-    {
+    public function __construct(
+        Contract $contract,
+        private readonly string $shipSymbol,
+        private readonly string $destination,
+    ) {
         parent::__construct($contract);
     }
 
-    protected function getName(): string
-    {
-        return self::class;
-    }
-
+    /**
+     * @return array<int, string>
+     */
     protected function getArgs(): array
     {
-        return [$this->destination];
+        return [$this->shipSymbol, $this->destination];
     }
 
-    public function execute(string $agentToken): mixed
+    public function execute(string $agentToken, mixed &$output): void
     {
-        if ($this->previous::class !== OrbitShipTask::class) {
-            $this->insertBefore($this->contract->createTask(OrbitShipTask::class));
+        if ($this->previous::class !== OrbitTask::class) {
+            $this->insertBefore($this->contract->createTask(OrbitTask::class, $this->shipSymbol));
 
-            return null;
+            return;
         }
 
-        $this->finished = true;
+        $ship = $this->getShip($agentToken, $this->shipSymbol);
 
-        $this->insertAfter($this->contract->createTask(RefuelShipTask::class));
+        if ($ship->nav->status === 'IN_ORBIT') {
+            if ($ship->nav->waypointSymbol === $this->destination) {
+                $this->insertAfter($this->contract->createTask(RefuelTask::class, $this->shipSymbol));
 
-        return null;
+                $this->finished = true;
+            } else {
+                $this->getApi(ShipApi::class)->navigate($agentToken, $this->shipSymbol, $this->destination);
+            }
+        }
     }
 }

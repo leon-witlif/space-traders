@@ -50,6 +50,15 @@ abstract class Storage
         $this->save();
     }
 
+    public function updateField(int $key, string $field, mixed $data): void
+    {
+        $this->load();
+
+        $this->data[$key][$field] = $data;
+
+        $this->save();
+    }
+
     public function remove(int $key): void
     {
         $this->load();
@@ -66,7 +75,7 @@ abstract class Storage
     }
 
     /**
-     * @phpstan-return array<T>
+     * @phpstan-return array<int, T>
      */
     public function list(): array
     {

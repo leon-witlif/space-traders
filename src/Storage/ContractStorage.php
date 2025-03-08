@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Storage;
 
+use App\Contract\Task;
+
 /**
- * @phpstan-extends Storage<array{agentToken: string, contractId: string, shipSymbol: string, data: array}>
+ * @phpstan-extends Storage<array{agentToken: string, contractId: string, shipSymbol: string, tasks: array<Task>}>
  */
 class ContractStorage extends Storage
 {

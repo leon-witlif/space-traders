@@ -4,73 +4,65 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Contract\Procurement;
-use App\SpaceTrader\AgentApi;
-use App\SpaceTrader\ContractApi;
-use App\SpaceTrader\ShipApi;
-use App\SpaceTrader\SystemApi;
+use App\Contract\ContractFactory;
+use App\Storage\ContractStorage;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand('app:contract:run')]
 class ContractCommand extends Command
 {
     public function __construct(
-        private readonly AgentApi $agentApi,
-        private readonly ContractApi $contractApi,
-        private readonly ShipApi $shipApi,
-        private readonly SystemApi $systemApi,
+        private readonly ContractStorage $contractStorage,
+        private readonly ContractFactory $contractFactory,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addArgument('agent', default: 'abc');
+        $this->addArgument('contract', mode: InputArgument::REQUIRED);
+
+        $this->addArgument('runs', default: 10);
+        $this->addArgument('wait', default: 85);
+
+        $this->addOption('once', mode: InputOption::VALUE_NONE, description: 'Whether to run the exection once');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $procurement = new Procurement($this->agentApi, $this->contractApi, $this->shipApi, $this->systemApi);
+        if ($input->getOption('once')) {
+            $this->executeContractTask($input, $output);
+        } else {
+            $runs = $input->getArgument('runs');
 
-        $json = <<<JSON
-[
-    {
-        "task": "App\\\\Contract\\\\Task\\\\FindAsteroidTask",
-        "args": ["ENGINEERED_ASTEROID"],
-        "finished": true
-    },
-    {
-        "task": "App\\\\Contract\\\\Task\\\\OrbitShipTask",
-        "args": [],
-        "finished": true
-    },
-    {
-        "task": "App\\\\Contract\\\\Task\\\\NavigateToTask",
-        "args": ["waypointSymbol"],
-        "finished": true
-    },
-    {
-        "task": "App\\\\Contract\\\\Task\\\\DockShipTask",
-        "args": [],
-        "finished": false
-    },
-    {
-        "task": "App\\\\Contract\\\\Task\\\\RefuelShipTask",
-        "args": [],
-        "finished": false
-    }
-]
-JSON;
-
-        $procurement->restoreState($json);
-        $procurement->execute($input->getArgument('agent'));
-        $procurement->saveState();
-
-        $output->writeln((string) $procurement);
+            while (--$runs >= 0) {
+                $this->executeContractTask($input, $output);
+                sleep($input->getArgument('wait'));
+            }
+        }
 
         return Command::SUCCESS;
+    }
+
+    private function executeContractTask(InputInterface $input, OutputInterface $output): void
+    {
+        $data = $this->contractStorage->get($input->getArgument('contract'));
+
+        $contract = $this->contractFactory->createProcurementContract($data['agentToken'], $data['contractId'], $data['shipSymbol']);
+        $contract->restoreFromArray($data['tasks']);
+        $contract->execute();
+
+        $this->contractStorage->updateField(
+            $this->contractStorage->key($data['contractId']),
+            'tasks',
+            $contract
+        );
+
+        $output->writeln((string) $contract);
     }
 }

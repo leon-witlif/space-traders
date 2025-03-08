@@ -6,6 +6,7 @@ namespace App\Contract;
 
 abstract class Task implements \JsonSerializable
 {
+    use ApiAware;
     use ListBehaviour;
 
     public ?Task $previous;
@@ -23,21 +24,33 @@ abstract class Task implements \JsonSerializable
         $this->finished = false;
     }
 
-    abstract protected function getName(): string;
+    public function overwriteState(bool $finished): void
+    {
+        $this->finished = $finished;
+    }
 
-    abstract protected function getArgs(): array;
+    /**
+     * @return array<int, mixed>
+     */
+    protected function getArgs(): array
+    {
+        return [];
+    }
 
-    abstract public function execute(string $agentToken): mixed;
+    abstract public function execute(string $agentToken, mixed &$output): void;
 
     public function __toString(): string
     {
-        return $this->getName().($this->finished ? ' (Done)' : '');
+        return static::class.($this->finished ? ' (Done)' : '');
     }
 
+    /**
+     * @return array{task: class-string, args: array<int, mixed>, finished: bool}
+     */
     public function jsonSerialize(): array
     {
         return [
-            'task' => $this->getName(),
+            'task' => static::class,
             'args' => $this->getArgs(),
             'finished' => $this->finished,
         ];

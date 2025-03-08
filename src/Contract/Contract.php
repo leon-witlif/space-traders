@@ -4,12 +4,32 @@ declare(strict_types=1);
 
 namespace App\Contract;
 
-abstract class Contract
+use App\SpaceTrader\AgentApi;
+use App\SpaceTrader\ContractApi;
+use App\SpaceTrader\ShipApi;
+use App\SpaceTrader\SystemApi;
+
+abstract class Contract implements \JsonSerializable
 {
     protected Task $task;
 
-    public function __construct(private readonly array $apis)
-    {
+    /**
+     * @var array<class-string, object>
+     */
+    private array $apis;
+
+    public function __construct(
+        AgentApi $agentApi,
+        ContractApi $contractApi,
+        ShipApi $shipApi,
+        SystemApi $systemApi,
+    ) {
+        $this->apis = [
+            AgentApi::class => $agentApi,
+            ContractApi::class => $contractApi,
+            ShipApi::class => $shipApi,
+            SystemApi::class => $systemApi,
+        ];
     }
 
     /**
@@ -32,17 +52,27 @@ abstract class Contract
         return new $className($this, ...$args);
     }
 
-    public function restoreState(string $json): void
+    /**
+     * @phpstan-template T of Task
+     * @phpstan-param class-string<T> $className
+     */
+    public function setRootTask(string $className, mixed ...$args): void
     {
-        $tasks = json_decode($json);
+        $this->task = $this->createTask($className, ...$args);
+    }
 
+    /**
+     * @param array<int, array{task: class-string, args: array<int, mixed>, finished: bool}> $tasks
+     */
+    public function restoreFromArray(array $tasks): void
+    {
         $taskReflection = new \ReflectionClass(Task::class);
         $finishedProperty = $taskReflection->getProperty('finished');
 
         // @formatter:off
-        $tasks = array_map(function (object $task) use ($finishedProperty) {
-            $instance = $this->createTask($task->task, ...$task->args);
-            $finishedProperty->setValue($instance, $task->finished);
+        $tasks = array_map(function (array $task) use ($finishedProperty) {
+            $instance = $this->createTask($task['task'], ...$task['args']);
+            $finishedProperty->setValue($instance, $task['finished']);
             return $instance;
         }, $tasks);
         // @formatter:on
@@ -61,22 +91,11 @@ abstract class Contract
         }
     }
 
-    public function saveState(): string
-    {
-        $tasks = [];
-
-        foreach ($this->taskIterator() as $task) {
-            $tasks[] = $task;
-        }
-
-        return json_encode($tasks, JSON_PRETTY_PRINT);
-    }
-
-    public function execute(string $agentToken): void
+    public function execute(): void
     {
         foreach ($this->taskIterator() as $task) {
             if (!$task->finished) {
-                $task->execute($agentToken);
+                $this->executeTask($task);
 
                 if (!$task->finished) {
                     break;
@@ -84,6 +103,8 @@ abstract class Contract
             }
         }
     }
+
+    abstract protected function executeTask(Task $task): void;
 
     public function __toString(): string
     {
@@ -94,6 +115,20 @@ abstract class Contract
         }
 
         return $output;
+    }
+
+    /**
+     * @return array<int, array{task: class-string, args: array<int, mixed>, finished: bool}>
+     */
+    public function jsonSerialize(): array
+    {
+        $tasks = [];
+
+        foreach ($this->taskIterator() as $task) {
+            $tasks[] = $task;
+        }
+
+        return $tasks;
     }
 
     private function taskIterator(): \Generator
