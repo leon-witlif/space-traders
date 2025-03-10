@@ -6,16 +6,17 @@ namespace App\Contract\Task;
 
 use App\Contract\Contract;
 use App\Contract\Task;
-use App\SpaceTrader\ShipApi;
+use App\SpaceTrader\ApiRegistry;
 
 final class NavigateToTask extends Task
 {
     public function __construct(
         Contract $contract,
+        ApiRegistry $apiRegistry,
         private readonly string $shipSymbol,
         private readonly string $destination,
     ) {
-        parent::__construct($contract);
+        parent::__construct($contract, $apiRegistry);
     }
 
     /**
@@ -34,7 +35,7 @@ final class NavigateToTask extends Task
             return;
         }
 
-        $ship = $this->getShip($agentToken, $this->shipSymbol);
+        $ship = $this->getShipApi()->get($agentToken, $this->shipSymbol, true);
 
         if ($ship->nav->status === 'IN_ORBIT') {
             if ($ship->nav->waypointSymbol === $this->destination) {
@@ -42,7 +43,7 @@ final class NavigateToTask extends Task
 
                 $this->finished = true;
             } else {
-                $this->getApi(ShipApi::class)->navigate($agentToken, $this->shipSymbol, $this->destination);
+                $this->getShipApi()->navigate($agentToken, $this->shipSymbol, $this->destination);
             }
         }
     }

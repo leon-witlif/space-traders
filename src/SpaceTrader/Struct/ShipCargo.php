@@ -11,7 +11,7 @@ readonly class ShipCargo
     public function __construct(
         public int $capacity,
         public int $units,
-        /** @var array<ShipCargoItem> */
+        /** @var array<int, ShipCargoItem> */
         public array $inventory,
     ) {
     }

@@ -6,8 +6,8 @@ namespace App\Controller;
 
 use App\Contract\ContractFactory;
 use App\Contract\Task\FindAsteroidTask;
-use App\SpaceTrader\ContractApi;
-use App\SpaceTrader\ShipApi;
+use App\SpaceTrader\Endpoint\ContractApi;
+use App\SpaceTrader\Endpoint\ShipApi;
 use App\Storage\ContractStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,7 +34,7 @@ class ContractController extends AbstractController
         $ship = $this->shipApi->list($agentToken)[0];
 
         $contract = $this->contractFactory->createProcurementContract($agentToken, $contractId, $ship->symbol);
-        $contract->setRootTask(FindAsteroidTask::class, 'ENGINEERED_ASTEROID');
+        $contract->setRootTask(FindAsteroidTask::class, $ship->symbol, 'ENGINEERED_ASTEROID');
 
         $this->contractStorage->add(
             [

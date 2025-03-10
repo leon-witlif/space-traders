@@ -226,6 +226,7 @@
         <h3>Welcome back {{ agent.symbol }}</h3>
 
         <p class="mb-3">
+            Next reset: {{ status.serverResets.next|date('d.m.Y H:i:s') }}<br>
             Available credits: {{ agent.credits }}
         </p>
 

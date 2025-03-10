@@ -2,17 +2,27 @@
 
 declare(strict_types=1);
 
-namespace App\SpaceTrader;
+namespace App\SpaceTrader\Endpoint;
 
+use App\SpaceTrader\ApiClient;
+use App\SpaceTrader\ApiEndpoint;
 use App\SpaceTrader\Struct\Cooldown;
 use App\SpaceTrader\Struct\Ship;
 use App\SpaceTrader\Struct\ShipCargo;
 use App\SpaceTrader\Struct\ShipNav;
+use Monolog\Handler\RotatingFileHandler;
+use Monolog\Level;
+use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 
-class ShipApi
+class ShipApi implements ApiEndpoint
 {
+    private readonly LoggerInterface $logger;
+
     public function __construct(private readonly ApiClient $apiClient)
     {
+        $this->logger = new Logger('api');
+        $this->logger->pushHandler(new RotatingFileHandler(__DIR__.'/../../../var/log/api.log', 3, Level::Debug));
     }
 
     /**
@@ -70,6 +80,12 @@ class ShipApi
         $content = $response['data'];
 
         $content['cargo'] = ShipCargo::fromResponse($content['cargo']);
+
+        $this->logger->info('Extract: '.count($content['events']).' events occured');
+
+        foreach ($content['events'] as $event) {
+            $this->logger->info("Symbol: {$event['symbol']} Component: {$event['component']} Name: {$event['name']} Description: {$event['description']}");
+        }
 
         return $content;
     }

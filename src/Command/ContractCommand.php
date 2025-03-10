@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Contract\ContractFactory;
+use App\Contract\Task;
+use App\Helper\Navigation;
 use App\Storage\ContractStorage;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -27,8 +29,8 @@ class ContractCommand extends Command
     {
         $this->addArgument('contract', mode: InputArgument::REQUIRED);
 
-        $this->addArgument('runs', default: 10);
-        $this->addArgument('wait', default: 85);
+        $this->addOption('runs', mode: InputOption::VALUE_REQUIRED, default: 10);
+        $this->addOption('wait', mode: InputOption::VALUE_REQUIRED, default: 85);
 
         $this->addOption('once', mode: InputOption::VALUE_NONE, description: 'Whether to run the exection once');
     }
@@ -38,11 +40,15 @@ class ContractCommand extends Command
         if ($input->getOption('once')) {
             $this->executeContractTask($input, $output);
         } else {
-            $runs = $input->getArgument('runs');
+            $runs = (int) $input->getOption('runs');
 
             while (--$runs >= 0) {
                 $this->executeContractTask($input, $output);
-                sleep($input->getArgument('wait'));
+
+                if ($runs > 0) {
+                    $output->writeln('Remaining runs: '.$runs.PHP_EOL);
+                    sleep((int) $input->getOption('wait'));
+                }
             }
         }
 
@@ -53,8 +59,17 @@ class ContractCommand extends Command
     {
         $data = $this->contractStorage->get($input->getArgument('contract'));
 
+        if (!$data) {
+            $output->writeln('Unable to find the specified contract');
+
+            return;
+        }
+
+        /** @var array<int, array{task: class-string<Task>, args: array<int, mixed>, finished: bool}> $tasks */
+        $tasks = $data['tasks'];
+
         $contract = $this->contractFactory->createProcurementContract($data['agentToken'], $data['contractId'], $data['shipSymbol']);
-        $contract->restoreFromArray($data['tasks']);
+        $contract->restoreFromArray($tasks);
         $contract->execute();
 
         $this->contractStorage->updateField(

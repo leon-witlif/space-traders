@@ -12,11 +12,10 @@ readonly class Contract
         public string $id,
         public string $factionSymbol,
         public string $type,
-        /** @var array{deadline: string, payment: array{onAccepted: int, onFulfilled: int}, deliver: array<array{tradeSymbol: string, destinationSymbol: string, unitsRequired: int, unitsFulfilled: int}>} */
-        public array $terms,
+        public ContractTerms $terms,
         public bool $accepted,
         public bool $fulfilled,
-        public string $deadlineToAccept,
+        public ?string $deadlineToAccept,
     ) {
     }
 
@@ -24,10 +23,10 @@ readonly class Contract
     {
         return sprintf(
             'Deliver %d / %d %s to %s',
-            $this->terms['deliver'][0]['unitsFulfilled'],
-            $this->terms['deliver'][0]['unitsRequired'],
-            $this->terms['deliver'][0]['tradeSymbol'],
-            $this->terms['deliver'][0]['destinationSymbol'],
+            $this->terms->deliver[0]->unitsFulfilled,
+            $this->terms->deliver[0]->unitsRequired,
+            $this->terms->deliver[0]->tradeSymbol,
+            $this->terms->deliver[0]->destinationSymbol,
         );
     }
 
@@ -35,8 +34,8 @@ readonly class Contract
     {
         return sprintf(
             '%d credits immediately, %d credits on fulfillment',
-            $this->terms['payment']['onAccepted'],
-            $this->terms['payment']['onFulfilled'],
+            $this->terms->payment->onAccepted,
+            $this->terms->payment->onFulfilled,
         );
     }
 }

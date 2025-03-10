@@ -2,17 +2,44 @@
 
 declare(strict_types=1);
 
-namespace App\SpaceTrader;
+namespace App\SpaceTrader\Endpoint;
 
+use App\SpaceTrader\ApiClient;
+use App\SpaceTrader\ApiEndpoint;
 use App\SpaceTrader\Struct\Agent;
 use App\SpaceTrader\Struct\Contract;
 use App\SpaceTrader\Struct\Faction;
-use App\SpaceTrader\Struct\Ship;
 
-class GlobalApi
+class GlobalApi implements ApiEndpoint
 {
     public function __construct(private readonly ApiClient $apiClient)
     {
+    }
+
+    /**
+     * @return array{
+     *     status: string,
+     *     version: string,
+     *     resetDate: string,
+     *     description: string,
+     *     stats: array<string, int>,
+     *     leaderboards: array<string, mixed>,
+     *     serverResets: array{
+     *         next: string,
+     *         frequency: string
+     *     },
+     *     announcements: array<int, mixed>,
+     *     links: array<int, mixed>
+     * }
+     */
+    public function status(bool $disableCache = false): array
+    {
+        if (!$disableCache) {
+            $this->apiClient->prepareRequestCache('global-status');
+        }
+
+        /** @phpstan-ignore-next-line Response body does not follow the typical structure */
+        return $this->apiClient->makeAccountRequest('GET', '');
     }
 
     /**

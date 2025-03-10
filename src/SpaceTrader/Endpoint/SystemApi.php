@@ -2,13 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\SpaceTrader;
+namespace App\SpaceTrader\Endpoint;
 
+use App\SpaceTrader\ApiClient;
+use App\SpaceTrader\ApiEndpoint;
 use App\SpaceTrader\Struct\Market;
 use App\SpaceTrader\Struct\System;
 use App\SpaceTrader\Struct\Waypoint;
 
-class SystemApi
+class SystemApi implements ApiEndpoint
 {
     public function __construct(private readonly ApiClient $apiClient)
     {

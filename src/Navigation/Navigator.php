@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Navigation;
 
 use App\Helper\Navigation;
+use App\SpaceTrader\Endpoint\SystemApi;
 use App\SpaceTrader\Struct\System;
 use App\SpaceTrader\Struct\SystemWaypoint;
-use App\SpaceTrader\SystemApi;
+use App\SpaceTrader\Struct\Waypoint;
 use App\Storage\WaypointStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpClient\Exception\ClientException;
@@ -77,6 +78,21 @@ class Navigator extends AbstractController
                 break;
             }
         }
+    }
+
+    /**
+     * @return array<int, array{waypointSymbol: string, scanned: bool, type?: string, x?: int, y?: int, traits?: array<string>, factionSymbol?: string, exports?: array<string>, exchange?: array<string>}>
+     */
+    public function getWaypointsWithinDistance(Waypoint $from, float $distance = 400.0): array
+    {
+        $scannedWaypoints = array_values(array_filter($this->waypointStorage->list(), fn (array $waypoint) => $waypoint['scanned']));
+
+        return array_values(
+            array_filter(
+                $scannedWaypoints,
+                fn (array $waypoint) => $this->distanceBetweenCoordinates($from->x, $from->y, $waypoint['x'], $waypoint['y']) <= $distance
+            )
+        );
     }
 
     /**
@@ -204,5 +220,10 @@ class Navigator extends AbstractController
     private function distanceBetweenWaypoints(SystemWaypoint $from, SystemWaypoint $to): float
     {
         return sqrt(pow($to->x - $from->x, 2) + pow($to->y - $from->y, 2));
+    }
+
+    private function distanceBetweenCoordinates(int $x1, int $y1, int $x2, int $y2): float
+    {
+        return sqrt(pow($x2 - $x1, 2) + pow($y2 - $y1, 2));
     }
 }

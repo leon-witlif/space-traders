@@ -14,9 +14,9 @@ readonly class System
         public string $type,
         public int $x,
         public int $y,
-        /** @var array<SystemWaypoint> */
+        /** @var array<int, SystemWaypoint> */
         public array $waypoints,
-        /** @var array<string> Array of Symbols */
+        /** @var array<int, string> Array of Symbols */
         public array $factions,
     ) {
     }

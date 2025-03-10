@@ -4,57 +4,29 @@ declare(strict_types=1);
 
 namespace App\Contract;
 
-use App\SpaceTrader\AgentApi;
-use App\SpaceTrader\ContractApi;
-use App\SpaceTrader\ShipApi;
-use App\SpaceTrader\SystemApi;
+use App\SpaceTrader\ApiRegistry;
+use App\SpaceTrader\ApiShorthands;
 
 abstract class Contract implements \JsonSerializable
 {
-    protected Task $task;
-
-    /**
-     * @var array<class-string, object>
-     */
-    private array $apis;
+    use ApiShorthands;
 
     public function __construct(
-        AgentApi $agentApi,
-        ContractApi $contractApi,
-        ShipApi $shipApi,
-        SystemApi $systemApi,
+        protected readonly ApiRegistry $apiRegistry,
+        protected ?Task $task = null,
     ) {
-        $this->apis = [
-            AgentApi::class => $agentApi,
-            ContractApi::class => $contractApi,
-            ShipApi::class => $shipApi,
-            SystemApi::class => $systemApi,
-        ];
     }
 
     /**
-     * @phpstan-template T of object
-     * @phpstan-param class-string<T> $className
-     * @phpstan-return T
-     */
-    public function getApi(string $className): object
-    {
-        return $this->apis[$className];
-    }
-
-    /**
-     * @phpstan-template T of Task
-     * @phpstan-param class-string<T> $className
-     * @phpstan-return T
+     * @param class-string<Task> $className
      */
     public function createTask(string $className, mixed ...$args): Task
     {
-        return new $className($this, ...$args);
+        return new $className($this, $this->apiRegistry, ...$args);
     }
 
     /**
-     * @phpstan-template T of Task
-     * @phpstan-param class-string<T> $className
+     * @param class-string<Task> $className
      */
     public function setRootTask(string $className, mixed ...$args): void
     {
@@ -62,7 +34,7 @@ abstract class Contract implements \JsonSerializable
     }
 
     /**
-     * @param array<int, array{task: class-string, args: array<int, mixed>, finished: bool}> $tasks
+     * @param array<int, array{task: class-string<Task>, args: array<int, mixed>, finished: bool}> $tasks
      */
     public function restoreFromArray(array $tasks): void
     {

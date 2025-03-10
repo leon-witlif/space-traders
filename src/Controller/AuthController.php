@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\SpaceTrader\GlobalApi;
+use App\SpaceTrader\Endpoint\GlobalApi;
 use App\Storage\AgentStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;

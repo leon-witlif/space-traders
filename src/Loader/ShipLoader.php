@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Loader;
 
-use App\SpaceTrader\ShipApi;
+use App\SpaceTrader\Endpoint\ShipApi;
 use App\SpaceTrader\Struct\Ship;
 use App\Storage\ContractStorage;
 

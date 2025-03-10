@@ -29,10 +29,15 @@ trait FromRequestTrait
     {
         /** @var \ReflectionNamedType|\ReflectionUnionType|\ReflectionIntersectionType|null $type */
         $type = $property->getType();
+
+        if (!($type instanceof \ReflectionNamedType)) {
+            return $data;
+        }
+
         $isArray = false;
 
         if ($type->getName() === 'array' && $property->getDocComment()) {
-            preg_match('/array<([a-z]+)>/i', $property->getDocComment(), $matches);
+            preg_match('/array<(?:int|string), ([a-z]+)>/i', $property->getDocComment(), $matches);
 
             if (array_key_exists(1, $matches)) {
                 $isArray = true;

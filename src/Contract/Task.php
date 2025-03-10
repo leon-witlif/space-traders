@@ -4,23 +4,30 @@ declare(strict_types=1);
 
 namespace App\Contract;
 
+use App\SpaceTrader\ApiRegistry;
+use App\SpaceTrader\ApiShorthands;
+
 abstract class Task implements \JsonSerializable
 {
-    use ApiAware;
+    use ApiShorthands;
     use ListBehaviour;
 
     public ?Task $previous;
     public ?Task $next;
 
     protected readonly Contract $contract;
-    protected(set) bool $finished;
+    protected readonly ApiRegistry $apiRegistry;
 
-    public function __construct(Contract $contract)
+    public protected(set) bool $finished;
+
+    public function __construct(Contract $contract, ApiRegistry $apiRegistry)
     {
         $this->previous = null;
         $this->next = null;
 
         $this->contract = $contract;
+        $this->apiRegistry = $apiRegistry;
+
         $this->finished = false;
     }
 
