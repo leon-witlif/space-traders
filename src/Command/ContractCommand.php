@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Contract\ContractFactory;
+use App\Contract\IdleFarm;
+use App\Contract\Procurement;
 use App\Contract\Task;
-use App\Helper\Navigation;
 use App\Storage\ContractStorage;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -29,8 +30,8 @@ class ContractCommand extends Command
     {
         $this->addArgument('contract', mode: InputArgument::REQUIRED);
 
-        $this->addOption('runs', mode: InputOption::VALUE_REQUIRED, default: 10);
-        $this->addOption('wait', mode: InputOption::VALUE_REQUIRED, default: 85);
+        $this->addOption('runs', mode: InputOption::VALUE_REQUIRED, default: 2880);
+        $this->addOption('wait', mode: InputOption::VALUE_REQUIRED, default: 10);
 
         $this->addOption('once', mode: InputOption::VALUE_NONE, description: 'Whether to run the exection once');
     }
@@ -68,7 +69,11 @@ class ContractCommand extends Command
         /** @var array<int, array{task: class-string<Task>, args: array<int, mixed>, finished: bool}> $tasks */
         $tasks = $data['tasks'];
 
-        $contract = $this->contractFactory->createProcurementContract($data['agentToken'], $data['contractId'], $data['shipSymbol']);
+        $contract = match ($data['contractId']) {
+            'idle-farm' => $this->contractFactory->createContract(IdleFarm::class, $data['agentToken'], $data['shipSymbol']),
+            default => $this->contractFactory->createContract(Procurement::class, $data['agentToken'], $data['contractId'], $data['shipSymbol']),
+        };
+
         $contract->restoreFromArray($tasks);
         $contract->execute();
 

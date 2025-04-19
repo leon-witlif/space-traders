@@ -18,9 +18,9 @@ abstract class Task implements \JsonSerializable
     protected readonly Contract $contract;
     protected readonly ApiRegistry $apiRegistry;
 
-    public protected(set) bool $finished;
+    public bool $finished;
 
-    public function __construct(Contract $contract, ApiRegistry $apiRegistry)
+    private function __construct(Contract $contract, ApiRegistry $apiRegistry)
     {
         $this->previous = null;
         $this->next = null;
@@ -31,10 +31,7 @@ abstract class Task implements \JsonSerializable
         $this->finished = false;
     }
 
-    public function overwriteState(bool $finished): void
-    {
-        $this->finished = $finished;
-    }
+    abstract public function execute(string $agentToken, mixed &$output): void;
 
     /**
      * @return array<int, mixed>
@@ -43,8 +40,6 @@ abstract class Task implements \JsonSerializable
     {
         return [];
     }
-
-    abstract public function execute(string $agentToken, mixed &$output): void;
 
     public function __toString(): string
     {

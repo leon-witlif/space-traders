@@ -6,14 +6,28 @@ namespace App\Contract;
 
 use App\SpaceTrader\ApiRegistry;
 
-class ContractFactory
+final class ContractFactory
 {
-    public function __construct(private readonly ApiRegistry $apiRegistry)
-    {
+    private readonly \ReflectionClass $parentReflection;
+    private readonly \ReflectionMethod $parentConstructor;
+
+    public function __construct(
+        private readonly ApiRegistry $apiRegistry,
+        private readonly TaskInitializer $taskInitializer,
+    ) {
+        $this->parentReflection = new \ReflectionClass(Contract::class);
+        $this->parentConstructor = $this->parentReflection->getConstructor();
     }
 
-    public function createProcurementContract(string $agentToken, string $contractId, string $shipSymbol): Procurement
+    /**
+     * @phpstan-param class-string<Contract> $classname
+     */
+    public function createContract(string $classname, mixed ...$args): Contract
     {
-        return new Procurement($this->apiRegistry, ...func_get_args());
+        $instance = new $classname(...$args);
+
+        $this->parentConstructor->invoke($instance, $this->apiRegistry, $this->taskInitializer);
+
+        return $instance;
     }
 }

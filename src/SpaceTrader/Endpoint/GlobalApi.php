@@ -23,7 +23,10 @@ class GlobalApi implements ApiEndpoint
      *     resetDate: string,
      *     description: string,
      *     stats: array<string, int>,
-     *     leaderboards: array<string, mixed>,
+     *     leaderboards: array{
+     *         mostCredits: array<int, array{agentSymbol: string, credits: int}>,
+     *         mostSubmittedCharts: array<int, mixed>
+     *     },
      *     serverResets: array{
      *         next: string,
      *         frequency: string

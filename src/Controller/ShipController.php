@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\SpaceTrader\Endpoint\ShipApi;
+use App\Loader\AgentTokenProvider;
+use App\SpaceTrader\ApiRegistry;
+use App\SpaceTrader\ApiShorthands;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,8 +14,23 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class ShipController extends AbstractController
 {
-    public function __construct(private readonly ShipApi $shipApi)
+    use ApiShorthands;
+
+    public function __construct(
+        private readonly ApiRegistry $apiRegistry,
+        private readonly AgentTokenProvider $agentTokenProvider,
+    ) {
+    }
+
+    #[Route('/ship/{shipSymbol}/navigate', 'app.ship.navigate')]
+    public function navigateAction(Request $request, string $shipSymbol): Response
     {
+        $waypointSymbol = $request->request->all()['form']['waypointSymbol'];
+
+        $this->getShipApi()->orbit($this->agentTokenProvider->getAgentToken(), $shipSymbol);
+        $this->getShipApi()->navigate($this->agentTokenProvider->getAgentToken(), $shipSymbol, $waypointSymbol);
+
+        return $this->redirectToRoute('app.agent.detail');
     }
 
     #[Route('/ship/{shipSymbol}/nav/{flightMode}', 'app.ship.nav')]
@@ -22,7 +39,7 @@ class ShipController extends AbstractController
         if ($request->getSession()->has('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $this->shipApi->nav($agentToken, $shipSymbol, $flightMode);
+            $this->getShipApi()->nav($agentToken, $shipSymbol, $flightMode);
 
             return $this->redirectToRoute('app.agent.detail');
         }
@@ -36,8 +53,8 @@ class ShipController extends AbstractController
         if ($request->getSession()->get('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $this->shipApi->dock($agentToken, $shipSymbol);
-            $this->shipApi->refuel($agentToken, $shipSymbol);
+            $this->getShipApi()->dock($agentToken, $shipSymbol);
+            $this->getShipApi()->refuel($agentToken, $shipSymbol);
 
             return $this->redirectToRoute('app.agent.detail');
         }
@@ -51,7 +68,21 @@ class ShipController extends AbstractController
         if ($request->getSession()->has('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $this->shipApi->negotiate($agentToken, $shipSymbol);
+            $this->getShipApi()->negotiate($agentToken, $shipSymbol);
+
+            return $this->redirectToRoute('app.agent.detail');
+        }
+
+        return $this->redirectToRoute('app.auth.logout');
+    }
+
+    #[Route('/ship/{shipSymbol}/repair', 'app.ship.repair')]
+    public function repairAction(Request $request, string $shipSymbol): Response
+    {
+        if ($request->getSession()->has('agentToken')) {
+            $agentToken = $request->getSession()->get('agentToken');
+
+            $this->getShipApi()->repair($agentToken, $shipSymbol);
 
             return $this->redirectToRoute('app.agent.detail');
         }

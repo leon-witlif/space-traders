@@ -4,35 +4,21 @@ declare(strict_types=1);
 
 namespace App\Contract\Task;
 
-use App\Contract\Contract;
 use App\Contract\Task;
-use App\SpaceTrader\ApiRegistry;
 use App\SpaceTrader\Struct\ShipCargo;
 
 final class ExtractTask extends Task
 {
     private int $currentCargoUnits = 0;
 
-    public function __construct(
-        Contract $contract,
-        ApiRegistry $apiRegistry,
-        private readonly string $shipSymbol
-    ) {
-        parent::__construct($contract, $apiRegistry);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    protected function getArgs(): array
+    public function __construct(private readonly string $shipSymbol)
     {
-        return [$this->shipSymbol];
     }
 
     public function execute(string $agentToken, mixed &$output): void
     {
         if ($this->previous::class !== OrbitTask::class) {
-            $this->insertBefore($this->contract->createTask(OrbitTask::class, $this->shipSymbol));
+            $this->insertBefore($this->contract->initializeTask(new OrbitTask($this->shipSymbol)));
 
             return;
         }
@@ -54,6 +40,19 @@ final class ExtractTask extends Task
         $this->currentCargoUnits = $output['cargo']->units;
     }
 
+    private function isShipCargoFull(ShipCargo $shipCargo): bool
+    {
+        return $shipCargo->units >= $shipCargo->capacity;
+    }
+
+    /**
+     * @return array{0: string}
+     */
+    protected function getArgs(): array
+    {
+        return [$this->shipSymbol];
+    }
+
     public function __toString(): string
     {
         if ($this->finished) {
@@ -61,10 +60,5 @@ final class ExtractTask extends Task
         } else {
             return parent::__toString().' ('.$this->currentCargoUnits.')';
         }
-    }
-
-    private function isShipCargoFull(ShipCargo $shipCargo): bool
-    {
-        return $shipCargo->units >= $shipCargo->capacity;
     }
 }

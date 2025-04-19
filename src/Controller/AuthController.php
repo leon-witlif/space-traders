@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\SpaceTrader\Endpoint\GlobalApi;
+use App\SpaceTrader\ApiRegistry;
+use App\SpaceTrader\ApiShorthands;
 use App\Storage\AgentStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -17,8 +18,10 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class AuthController extends AbstractController
 {
+    use ApiShorthands;
+
     public function __construct(
-        private readonly GlobalApi $globalApi,
+        private readonly ApiRegistry $apiRegistry,
         private readonly AgentStorage $agentStorage,
     ) {
     }
@@ -44,7 +47,7 @@ class AuthController extends AbstractController
         if ($registerAgentForm->isSubmitted() && $registerAgentForm->isValid()) {
             $data = $registerAgentForm->getData();
 
-            $agentToken = $this->globalApi->register($data['faction'], $data['symbol'])['token'];
+            $agentToken = $this->getGlobalApi()->register($data['faction'], $data['symbol'])['token'];
 
             $this->agentStorage->add(['token' => $agentToken, 'symbol' => $data['symbol']]);
         }

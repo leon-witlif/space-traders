@@ -6,13 +6,12 @@ namespace App\Contract\Task;
 
 use App\Contract\Task;
 
-final class DeliverTask extends Task
+final class SellTask extends Task
 {
     public function __construct(
-        private readonly string $contractId,
         private readonly string $shipSymbol,
         /** @var array<int, string> */
-        private readonly array $deliverGoods,
+        private readonly array $sellCargoItems,
     ) {
     }
 
@@ -27,10 +26,9 @@ final class DeliverTask extends Task
         $ship = $this->getShipApi()->get($agentToken, $this->shipSymbol, true);
 
         foreach ($ship->cargo->inventory as $cargoItem) {
-            if (in_array($cargoItem->symbol, $this->deliverGoods)) {
-                $this->getContractApi()->deliver(
+            if (in_array($cargoItem->symbol, $this->sellCargoItems)) {
+                $this->getShipApi()->sell(
                     $agentToken,
-                    $this->contractId,
                     $this->shipSymbol,
                     $cargoItem->symbol,
                     $cargoItem->units
@@ -42,10 +40,10 @@ final class DeliverTask extends Task
     }
 
     /**
-     * @return array{0: string, 1: string, 2: array<int, string>}
+     * @return array{0: string, 1: array<int, string>}
      */
     protected function getArgs(): array
     {
-        return [$this->contractId, $this->shipSymbol, $this->deliverGoods];
+        return [$this->shipSymbol, $this->sellCargoItems];
     }
 }

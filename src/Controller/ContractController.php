@@ -5,36 +5,39 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Contract\ContractFactory;
+use App\Contract\Procurement;
 use App\Contract\Task\FindAsteroidTask;
-use App\SpaceTrader\Endpoint\ContractApi;
-use App\SpaceTrader\Endpoint\ShipApi;
+use App\Loader\AgentTokenProvider;
+use App\SpaceTrader\ApiRegistry;
+use App\SpaceTrader\ApiShorthands;
 use App\Storage\ContractStorage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 class ContractController extends AbstractController
 {
+    use ApiShorthands;
+
     public function __construct(
-        private readonly ContractApi $contractApi,
-        private readonly ShipApi $shipApi,
+        private readonly ApiRegistry $apiRegistry,
+        private readonly AgentTokenProvider $agentTokenProvider,
         private readonly ContractStorage $contractStorage,
         private readonly ContractFactory $contractFactory,
     ) {
     }
 
     #[Route('/contract/{contractId}/accept', 'app.contract.accept')]
-    public function acceptAction(Request $request, string $contractId): Response
+    public function acceptAction(string $contractId): Response
     {
-        $agentToken = $request->getSession()->get('agentToken');
+        $agentToken = $this->agentTokenProvider->getAgentToken();
 
-        $this->contractApi->accept($agentToken, $contractId);
+        $this->getContractApi()->accept($agentToken, $contractId);
 
-        $ship = $this->shipApi->list($agentToken)[0];
+        $ship = $this->getShipApi()->list($agentToken)[0];
 
-        $contract = $this->contractFactory->createProcurementContract($agentToken, $contractId, $ship->symbol);
-        $contract->setRootTask(FindAsteroidTask::class, $ship->symbol, 'ENGINEERED_ASTEROID');
+        $contract = $this->contractFactory->createContract(Procurement::class, $agentToken, $contractId, $ship->symbol);
+        $contract->setRootTask($contract->initializeTask(new FindAsteroidTask('ENGINEERED_ASTEROID')));
 
         $this->contractStorage->add(
             [

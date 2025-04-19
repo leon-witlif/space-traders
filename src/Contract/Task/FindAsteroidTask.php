@@ -4,29 +4,14 @@ declare(strict_types=1);
 
 namespace App\Contract\Task;
 
-use App\Contract\Contract;
 use App\Contract\Task;
 use App\Helper\Navigation;
-use App\SpaceTrader\ApiRegistry;
 use App\SpaceTrader\Struct\SystemWaypoint;
 
 final class FindAsteroidTask extends Task
 {
-    public function __construct(
-        Contract $contract,
-        ApiRegistry $apiRegistry,
-        private readonly string $shipSymbol,
-        private readonly string $type,
-    ) {
-        parent::__construct($contract, $apiRegistry);
-    }
-
-    /**
-     * @return array{0: string, 1: string}
-     */
-    protected function getArgs(): array
+    public function __construct(private readonly string $type)
     {
-        return [$this->shipSymbol, $this->type];
     }
 
     public function execute(string $agentToken, mixed &$output): void
@@ -41,5 +26,13 @@ final class FindAsteroidTask extends Task
 
             $this->finished = true;
         }
+    }
+
+    /**
+     * @return array{0: string}
+     */
+    protected function getArgs(): array
+    {
+        return [$this->type];
     }
 }

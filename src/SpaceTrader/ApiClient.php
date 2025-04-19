@@ -6,6 +6,7 @@ namespace App\SpaceTrader;
 
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface as HttpClientExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class ApiClient
@@ -15,6 +16,8 @@ final class ApiClient
     private string $requestCacheKey;
     private int $requestCacheExpiresAfter;
 
+    private string $exceptionClass;
+
     public function __construct(
         #[\SensitiveParameter] private readonly string $spaceTraderToken,
         private readonly HttpClientInterface $client,
@@ -22,6 +25,8 @@ final class ApiClient
     ) {
         $this->requestCacheKey = '';
         $this->requestCacheExpiresAfter = 0;
+
+        $this->exceptionClass = '';
     }
 
     public function prepareRequestCache(string $key, int $expiresAfter = 1800): void
@@ -35,6 +40,11 @@ final class ApiClient
         foreach ($keys as $key) {
             $this->spaceTraderPool->delete($key);
         }
+    }
+
+    public function throwException(string $classname): void
+    {
+        $this->exceptionClass = $classname;
     }
 
     /**
@@ -91,10 +101,20 @@ final class ApiClient
             );
         } else {
             $response = $this->client->request($method, self::API.$path, $options);
-            $content = $response->getContent();
+
+            if (class_exists($this->exceptionClass)) {
+                try {
+                    $content = $response->getContent();
+                } catch (HttpClientExceptionInterface) {
+                    throw new $this->exceptionClass();
+                }
+            } else {
+                $content = $response->getContent();
+            }
         }
 
         $this->prepareRequestCache('', 0);
+        $this->throwException('');
 
         return json_decode($content, true);
     }

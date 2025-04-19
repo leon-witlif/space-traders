@@ -4,26 +4,12 @@ declare(strict_types=1);
 
 namespace App\Contract\Task;
 
-use App\Contract\Contract;
 use App\Contract\Task;
-use App\SpaceTrader\ApiRegistry;
 
 final class OrbitTask extends Task
 {
-    public function __construct(
-        Contract $contract,
-        ApiRegistry $apiRegistry,
-        private readonly string $shipSymbol
-    ) {
-        parent::__construct($contract, $apiRegistry);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    protected function getArgs(): array
+    public function __construct(private readonly string $shipSymbol)
     {
-        return [$this->shipSymbol];
     }
 
     public function execute(string $agentToken, mixed &$output): void
@@ -31,5 +17,13 @@ final class OrbitTask extends Task
         $this->getShipApi()->orbit($agentToken, $this->shipSymbol);
 
         $this->finished = true;
+    }
+
+    /**
+     * @return array{0: string}
+     */
+    protected function getArgs(): array
+    {
+        return [$this->shipSymbol];
     }
 }

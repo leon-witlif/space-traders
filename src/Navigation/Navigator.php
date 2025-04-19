@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Navigation;
 
 use App\Helper\Navigation;
-use App\SpaceTrader\Endpoint\SystemApi;
+use App\SpaceTrader\ApiRegistry;
+use App\SpaceTrader\ApiShorthands;
 use App\SpaceTrader\Struct\System;
 use App\SpaceTrader\Struct\SystemWaypoint;
 use App\SpaceTrader\Struct\Waypoint;
@@ -15,12 +16,14 @@ use Symfony\Component\HttpClient\Exception\ClientException;
 
 class Navigator extends AbstractController
 {
+    use ApiShorthands;
+
     private ?System $system;
     /** @var array<string> */
     private array $fuelWaypoints;
 
     public function __construct(
-        private readonly SystemApi $systemApi,
+        private readonly ApiRegistry $apiRegistry,
         private readonly WaypointStorage $waypointStorage,
     ) {
         $this->system = null;
@@ -38,7 +41,7 @@ class Navigator extends AbstractController
 
     public function initializeSystem(string $systemSymbol): void
     {
-        $this->system = $this->systemApi->get($systemSymbol);
+        $this->system = $this->getSystemApi()->get($systemSymbol);
 
         foreach ($this->system->waypoints as $waypoint) {
             if (!$this->waypointStorage->get($waypoint->symbol)) {
@@ -51,7 +54,7 @@ class Navigator extends AbstractController
     {
         foreach ($this->waypointStorage->list() as $waypoint) {
             if (!$waypoint['scanned']) {
-                $waypointResponse = $this->systemApi->waypoint(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
+                $waypointResponse = $this->getSystemApi()->waypoint(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
 
                 $data = [
                     'waypointSymbol' => $waypoint['waypointSymbol'],
@@ -64,7 +67,7 @@ class Navigator extends AbstractController
                 ];
 
                 try {
-                    $marketResponse = $this->systemApi->market(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
+                    $marketResponse = $this->getSystemApi()->market(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
 
                     $data['exports'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exports);
                     $data['exchange'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exchange);

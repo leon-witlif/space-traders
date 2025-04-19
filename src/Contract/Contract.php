@@ -11,26 +11,29 @@ abstract class Contract implements \JsonSerializable
 {
     use ApiShorthands;
 
-    public function __construct(
-        protected readonly ApiRegistry $apiRegistry,
-        protected ?Task $task = null,
-    ) {
+    protected readonly ApiRegistry $apiRegistry;
+    protected readonly TaskInitializer $taskInitializer;
+
+    protected ?Task $task;
+
+    private function __construct(ApiRegistry $apiRegistry, TaskInitializer $taskInitializer)
+    {
+        $this->apiRegistry = $apiRegistry;
+        $this->taskInitializer = $taskInitializer;
+
+        $this->task = null;
     }
 
-    /**
-     * @param class-string<Task> $className
-     */
-    public function createTask(string $className, mixed ...$args): Task
+    public function setRootTask(Task $task): void
     {
-        return new $className($this, $this->apiRegistry, ...$args);
+        $this->task = $task;
     }
 
-    /**
-     * @param class-string<Task> $className
-     */
-    public function setRootTask(string $className, mixed ...$args): void
+    public function initializeTask(Task $task): Task
     {
-        $this->task = $this->createTask($className, ...$args);
+        $this->taskInitializer->initialize($task, $this);
+
+        return $task;
     }
 
     /**
@@ -43,7 +46,7 @@ abstract class Contract implements \JsonSerializable
 
         // @formatter:off
         $tasks = array_map(function (array $task) use ($finishedProperty) {
-            $instance = $this->createTask($task['task'], ...$task['args']);
+            $instance = $this->initializeTask(new $task['task'](...$task['args']));
             $finishedProperty->setValue($instance, $task['finished']);
             return $instance;
         }, $tasks);

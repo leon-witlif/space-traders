@@ -64,8 +64,10 @@
             const SIZE = 800;
             let RANGE;
 
+            const ships = {{ ships|json_encode|raw }};
             const waypoints = {{ scannedWaypoints|json_encode|raw }};
-            console.log(waypoints);
+
+            console.log(ships, waypoints);
 
             let maxX = 0;
             let maxY = 0;
@@ -133,16 +135,25 @@
             }
             {% endif %}
 
+            let shipWaypoints = ships.map(ship => ship.nav.waypointSymbol);
+
             for (let i = 0; i < waypoints.length; ++i) {
                 let position = mapCoordinatesToPixels(waypoints[i].x, waypoints[i].y);
 
+                let radius = 2.5;
+                let fillStyle = 'black';
+
                 if (waypoints[i].exchange.includes('FUEL')) {
-                    context.fillStyle = 'orange';
-                } else {
-                    context.fillStyle = 'black';
+                    fillStyle = 'orange';
                 }
 
-                let radius = 2.5;
+                if (shipWaypoints.includes(waypoints[i].waypointSymbol)) {
+                    radius = 5.0;
+                    fillStyle = 'green';
+                }
+
+                context.fillStyle = fillStyle;
+
                 {% if navigator|default %}
                 if (waypoints[i].waypointSymbol === {{ navigator.to.symbol|json_encode|raw }}) {
                     radius = 5.0;
@@ -227,7 +238,8 @@
 
         <p class="mb-3">
             Next reset: {{ status.serverResets.next|date('d.m.Y H:i:s') }}<br>
-            Available credits: {{ agent.credits }}
+            Credits: {{ agent.credits }}<br>
+            Ranking: Top {{ ranking }}
         </p>
 
         <h4>Your System</h4>
@@ -249,7 +261,11 @@
                                         <canvas id="system" class="d-block mx-3"></canvas>
                                         <div class="flex-grow-1">
                                             <h4>Ship Controls</h4>
-                                            <a class="btn btn-sm btn-primary" href="{{ path('app.ship.refuel', {'shipSymbol': ships[0].symbol}) }}">Refuel</a>
+                                            <a class="btn btn-sm btn-primary me-2" href="{{ path('app.ship.refuel', {'shipSymbol': ships[0].symbol}) }}">Refuel</a>
+                                            <a class="btn btn-sm btn-primary" href="{{ path('app.ship.repair', {'shipSymbol': ships[0].symbol}) }}">Repair</a>
+                                            <hr>
+                                            {% form_theme navigateForm 'bootstrap_5_layout.html.twig' %}
+                                            {{ form(navigateForm) }}
                                             <hr>
                                             <div id="clickedWaypoint"></div>
                                         </div>
@@ -286,6 +302,9 @@
                                 </ul>
                                 <hr>
                                 <span>Status: {{ ship.nav.status }}</span><br>
+                                {% if ship.nav.status == 'IN_TRANSIT' %}
+                                    <span>Arrival: {{ ship.nav.route.arrival|date('d.m.Y H:i:s') }}</span><br>
+                                {% endif %}
                                 <span>
                                     Flight mode:
                                     <a class="btn btn-sm {% if ship.nav.flightMode == 'CRUISE' %}btn-success{% else %}btn-primary{% endif %} py-0 me-2" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'CRUISE'}) }}">CRUISE</a>
@@ -298,6 +317,10 @@
                                 {% if ship.cooldown.expiration|default %}
                                     <span data-cooldown="{{ ship.cooldown.remainingSeconds }}">Cooldown: {{ ship.cooldown.expiration|date('d.m.Y H:i:s') }} ({{ ship.cooldown.remainingSeconds }}s)</span><br>
                                 {% endif %}
+                                <hr>
+                                <span>Frame condition: {{ ship.frame.condition|round(3, 'floor') }}</span><br>
+                                <span>Reactor condition: {{ ship.reactor.condition|round(3, 'floor') }}</span><br>
+                                <span>Engine condition: {{ ship.engine.condition|round(3, 'floor') }}</span>
                                 <hr>
                                 <span>Cargo: {{ ship.cargo.units }} / {{ ship.cargo.capacity }}</span><br>
                                 <ul class="mb-0">

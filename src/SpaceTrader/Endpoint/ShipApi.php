@@ -6,6 +6,7 @@ namespace App\SpaceTrader\Endpoint;
 
 use App\SpaceTrader\ApiClient;
 use App\SpaceTrader\ApiEndpoint;
+use App\SpaceTrader\Exception\ShipRefuelException;
 use App\SpaceTrader\Struct\Cooldown;
 use App\SpaceTrader\Struct\Ship;
 use App\SpaceTrader\Struct\ShipCargo;
@@ -124,6 +125,12 @@ class ShipApi implements ApiEndpoint
 
         $content['nav'] = ShipNav::fromResponse($content['nav']);
 
+        $this->logger->info('Navigate: '.count($content['events']).' events occured');
+
+        foreach ($content['events'] as $event) {
+            $this->logger->info("Symbol: {$event['symbol']} Component: {$event['component']} Name: {$event['name']} Description: {$event['description']}");
+        }
+
         return $content;
     }
 
@@ -150,9 +157,13 @@ class ShipApi implements ApiEndpoint
         $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/sell", $token, ['body' => json_encode($data)]);
     }
 
+    /**
+     * @phpstan-throws ShipRefuelException
+     */
     public function refuel(string $token, string $shipSymbol): void
     {
         $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+        $this->apiClient->throwException(ShipRefuelException::class);
 
         $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/refuel", $token);
     }
@@ -162,5 +173,12 @@ class ShipApi implements ApiEndpoint
         $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
 
         $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/negotiate/contract", $token);
+    }
+
+    public function repair(string $token, string $shipSymbol): void
+    {
+        $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+
+        $this->apiClient->makeAgentRequest('POST', "/my/ships/$shipSymbol/repair", $token);
     }
 }
