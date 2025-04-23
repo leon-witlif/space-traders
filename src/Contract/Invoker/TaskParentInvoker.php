@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Contract;
+namespace App\Contract\Invoker;
 
+use App\Contract\Contract;
+use App\Contract\Task;
 use App\SpaceTrader\ApiRegistry;
 
-final class TaskInitializer
+final class TaskParentInvoker
 {
+    /** @var \ReflectionClass<Task> */
     private readonly \ReflectionClass $parentReflection;
     private readonly \ReflectionMethod $parentConstructor;
 
@@ -17,7 +20,7 @@ final class TaskInitializer
         $this->parentConstructor = $this->parentReflection->getConstructor();
     }
 
-    public function initialize(Task $task, Contract $contract): void
+    public function invoke(Task $task, Contract $contract): void
     {
         $this->parentConstructor->invoke($task, $contract, $this->apiRegistry);
     }

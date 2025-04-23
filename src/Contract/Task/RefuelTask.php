@@ -16,13 +16,13 @@ final class RefuelTask extends Task
     public function execute(string $agentToken, mixed &$output): void
     {
         if ($this->previous::class !== DockTask::class) {
-            $this->insertBefore($this->contract->initializeTask(new DockTask($this->shipSymbol)));
+            $this->insertBefore($this->contract->invokeTaskParent(new DockTask($this->shipSymbol)));
 
             return;
         }
 
         try {
-            $this->getShipApi()->refuel($agentToken, $this->shipSymbol);
+            $this->fleetApi->refuel($agentToken, $this->shipSymbol);
         } catch (ShipRefuelException) {
         }
 

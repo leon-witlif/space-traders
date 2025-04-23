@@ -8,20 +8,21 @@ readonly class Ship
 {
     use FromRequestTrait;
 
-    /** @phpstan-ignore-next-line missingType.iterableValue */
     public function __construct(
         public string $symbol,
-        public array $registration,
+        public ShipRegistration $registration,
         public ShipNav $nav,
-        public array $crew,
-        public array $frame,
-        public array $reactor,
-        public array $engine,
+        public ShipCrew $crew,
+        public ShipFrame $frame,
+        public ShipReactor $reactor,
+        public ShipEngine $engine,
         public Cooldown $cooldown,
+        /** @var array<int, ShipModule> */
         public array $modules,
+        /** @var array<int, ShipMount> */
         public array $mounts,
         public ShipCargo $cargo,
-        public array $fuel,
+        public ShipFuel $fuel,
     ) {
     }
 }

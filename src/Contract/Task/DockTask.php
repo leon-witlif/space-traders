@@ -14,7 +14,7 @@ final class DockTask extends Task
 
     public function execute(string $agentToken, mixed &$output): void
     {
-        $this->getShipApi()->dock($agentToken, $this->shipSymbol);
+        $this->fleetApi->dock($agentToken, $this->shipSymbol);
 
         $this->finished = true;
     }

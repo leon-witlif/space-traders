@@ -17,20 +17,20 @@ final class NavigateToTask extends Task
     public function execute(string $agentToken, mixed &$output): void
     {
         if ($this->previous::class !== OrbitTask::class) {
-            $this->insertBefore($this->contract->initializeTask(new OrbitTask($this->shipSymbol)));
+            $this->insertBefore($this->contract->invokeTaskParent(new OrbitTask($this->shipSymbol)));
 
             return;
         }
 
-        $ship = $this->getShipApi()->get($agentToken, $this->shipSymbol, true);
+        $ship = $this->fleetApi->get($agentToken, $this->shipSymbol, true);
 
         if ($ship->nav->status === 'IN_ORBIT') {
             if ($ship->nav->waypointSymbol === $this->destination) {
-                $this->insertAfter($this->contract->initializeTask(new RefuelTask($this->shipSymbol)));
+                $this->insertAfter($this->contract->invokeTaskParent(new RefuelTask($this->shipSymbol)));
 
                 $this->finished = true;
             } else {
-                $this->getShipApi()->navigate($agentToken, $this->shipSymbol, $this->destination);
+                $this->fleetApi->navigate($agentToken, $this->shipSymbol, $this->destination);
             }
         }
     }

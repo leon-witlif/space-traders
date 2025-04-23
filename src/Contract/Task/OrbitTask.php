@@ -14,7 +14,7 @@ final class OrbitTask extends Task
 
     public function execute(string $agentToken, mixed &$output): void
     {
-        $this->getShipApi()->orbit($agentToken, $this->shipSymbol);
+        $this->fleetApi->orbit($agentToken, $this->shipSymbol);
 
         $this->finished = true;
     }

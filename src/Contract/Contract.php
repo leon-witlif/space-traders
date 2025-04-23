@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Contract;
 
+use App\Contract\Invoker\TaskParentInvoker;
 use App\SpaceTrader\ApiRegistry;
 use App\SpaceTrader\ApiShorthands;
 
@@ -11,16 +12,12 @@ abstract class Contract implements \JsonSerializable
 {
     use ApiShorthands;
 
-    protected readonly ApiRegistry $apiRegistry;
-    protected readonly TaskInitializer $taskInitializer;
-
     protected ?Task $task;
 
-    private function __construct(ApiRegistry $apiRegistry, TaskInitializer $taskInitializer)
-    {
-        $this->apiRegistry = $apiRegistry;
-        $this->taskInitializer = $taskInitializer;
-
+    private function __construct(
+        protected readonly ApiRegistry $apiRegistry,
+        protected readonly TaskParentInvoker $taskParentInvoker,
+    ) {
         $this->task = null;
     }
 
@@ -29,10 +26,11 @@ abstract class Contract implements \JsonSerializable
         $this->task = $task;
     }
 
-    public function initializeTask(Task $task): Task
+    public function invokeTaskParent(Task $task): Task
     {
-        $this->taskInitializer->initialize($task, $this);
+        $this->taskParentInvoker->invoke($task, $this);
 
+        // Returning $task to allow method chaining
         return $task;
     }
 
@@ -46,7 +44,7 @@ abstract class Contract implements \JsonSerializable
 
         // @formatter:off
         $tasks = array_map(function (array $task) use ($finishedProperty) {
-            $instance = $this->initializeTask(new $task['task'](...$task['args']));
+            $instance = $this->invokeTaskParent(new $task['task'](...$task['args']));
             $finishedProperty->setValue($instance, $task['finished']);
             return $instance;
         }, $tasks);

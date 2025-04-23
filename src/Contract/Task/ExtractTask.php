@@ -18,12 +18,12 @@ final class ExtractTask extends Task
     public function execute(string $agentToken, mixed &$output): void
     {
         if ($this->previous::class !== OrbitTask::class) {
-            $this->insertBefore($this->contract->initializeTask(new OrbitTask($this->shipSymbol)));
+            $this->insertBefore($this->contract->invokeTaskParent(new OrbitTask($this->shipSymbol)));
 
             return;
         }
 
-        $ship = $this->getShipApi()->get($agentToken, $this->shipSymbol, true);
+        $ship = $this->fleetApi->get($agentToken, $this->shipSymbol, true);
 
         $this->currentCargoUnits = $ship->cargo->units;
 
@@ -31,7 +31,7 @@ final class ExtractTask extends Task
             return;
         }
 
-        $output = $this->getShipApi()->extract($agentToken, $this->shipSymbol);
+        $output = $this->fleetApi->extract($agentToken, $this->shipSymbol);
 
         if ($this->isShipCargoFull($output['cargo'])) {
             $this->finished = true;

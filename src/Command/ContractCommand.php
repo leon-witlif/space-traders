@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Contract\ContractFactory;
-use App\Contract\IdleFarm;
-use App\Contract\Procurement;
+use App\Contract\Contract\IdleFarm;
+use App\Contract\Contract\Procurement;
+use App\Contract\Invoker\ContractParentInvoker;
 use App\Contract\Task;
 use App\Storage\ContractStorage;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -21,7 +21,7 @@ class ContractCommand extends Command
 {
     public function __construct(
         private readonly ContractStorage $contractStorage,
-        private readonly ContractFactory $contractFactory,
+        private readonly ContractParentInvoker $contractParentInvoker,
     ) {
         parent::__construct();
     }
@@ -70,9 +70,11 @@ class ContractCommand extends Command
         $tasks = $data['tasks'];
 
         $contract = match ($data['contractId']) {
-            'idle-farm' => $this->contractFactory->createContract(IdleFarm::class, $data['agentToken'], $data['shipSymbol']),
-            default => $this->contractFactory->createContract(Procurement::class, $data['agentToken'], $data['contractId'], $data['shipSymbol']),
+            'idle-farm' => new IdleFarm($data['agentToken'], $data['shipSymbol']),
+            default => new Procurement($data['agentToken'], $data['contractId'], $data['shipSymbol'])
         };
+
+        $this->contractParentInvoker->invoke($contract);
 
         $contract->restoreFromArray($tasks);
         $contract->execute();

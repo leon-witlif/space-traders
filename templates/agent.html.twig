@@ -19,23 +19,18 @@
                 });
             }
 
-            const cooldownElement = document.querySelector('[data-cooldown]');
-
-            if (cooldownElement) {
+            for (let element of document.getElementsByClassName('cooldown')) {
                 let intervalHandle;
 
                 intervalHandle = setInterval(() => {
-                    let openingParantheses = cooldownElement.innerText.indexOf('(');
-                    let closingParantheses = cooldownElement.innerText.indexOf(')');
-
-                    let currentValue = Number(cooldownElement.innerText.substring(openingParantheses + 1, closingParantheses - 1));
+                    let currentValue = Number(element.innerText);
                     if (currentValue <= 1) {
-                        clearInterval(intervalHandle);
+                        clearInterval(intervalHandle)
+                        setTimeout(() => window.location.reload(), 2500);
                     }
 
-                    let newText = cooldownElement.innerText.replace(currentValue + 's', (currentValue - 1) + 's');
-
-                    cooldownElement.innerText = newText;
+                    let newValue = currentValue - 1;
+                    element.innerText = newValue;
                 }, 1000);
             }
 
@@ -259,15 +254,17 @@
                                 <div id="system-map" class="collapse {# show #} flex-grow-1">
                                     <div class="d-flex justify-content-evenly">
                                         <canvas id="system" class="d-block mx-3"></canvas>
-                                        <div class="flex-grow-1">
+                                        <div class="flex-grow-1 d-flex flex-column" style="height: 800px;">
                                             <h4>Ship Controls</h4>
-                                            <a class="btn btn-sm btn-primary me-2" href="{{ path('app.ship.refuel', {'shipSymbol': ships[0].symbol}) }}">Refuel</a>
-                                            <a class="btn btn-sm btn-primary" href="{{ path('app.ship.repair', {'shipSymbol': ships[0].symbol}) }}">Repair</a>
+                                            <div>
+                                                <a class="btn btn-sm btn-primary me-2" href="{{ path('app.ship.refuel', {'shipSymbol': ships[0].symbol}) }}">Refuel</a>
+                                                <a class="btn btn-sm btn-primary" href="{{ path('app.ship.repair', {'shipSymbol': ships[0].symbol}) }}">Repair</a>
+                                            </div>
                                             <hr>
                                             {% form_theme navigateForm 'bootstrap_5_layout.html.twig' %}
                                             {{ form(navigateForm) }}
-                                            <hr>
-                                            <div id="clickedWaypoint"></div>
+                                            <hr class="mt-0">
+                                            <div id="clickedWaypoint" class="overflow-y-scroll"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -285,42 +282,63 @@
                 <div class="col">
                     <div class="card shadow-sm">
                         <div class="card-body">
-                            <h5 class="card-title">{{ ship.symbol }}</h5>
+                            <h5 class="card-title">{{ ship.registration.name }}</h5>
                             <div class="card-text">
-                                <span>Crew: {{ ship.crew.current }} / {{ ship.crew.capacity }}</span><br>
-                                <button class="btn btn-sm btn-primary mt-2 me-2" data-bs-toggle="collapse" data-bs-target="#modules-{{ loop.index0 }}" aria-expanded="false" aria-controls="modules-{{ loop.index0 }}">Modules</button>
-                                <button class="btn btn-sm btn-primary mt-2" data-bs-toggle="collapse" data-bs-target="#mounts-{{ loop.index0 }}" aria-expanded="false" aria-controls="mounts-{{ loop.index0 }}">Mounts</button>
-                                <ul id="modules-{{ loop.index0 }}" class="collapse mt-2 mb-0">
+                                <div>Role: {{ ship.registration.role }}</div>
+                                <div>Waypoint: {{ ship.nav.waypointSymbol }}</div>
+                                {% if ship.nav.status == 'IN_TRANSIT' %}
+                                    <div>Traveling from {{ ship.nav.route.origin.symbol }} to {{ ship.nav.route.destination.symbol }}</div>
+                                    <div>Arrival at {{ ship.nav.route.arrival|date('d.m.Y H:i:s') }}</div>
+                                {% endif %}
+                                <div class="d-flex mb-1">
+                                    <span>Status:</span>
+                                    {% if ship.nav.status == 'IN_TRANSIT' %}
+                                        <span class="btn btn-sm btn-success py-0 ms-1">{{ ship.nav.status }}</span>
+                                    {% else %}
+                                        {% for status in ['IN_ORBIT', 'DOCKED'] %}
+                                            {% if ship.nav.status == status %}
+                                                <button class="btn btn-sm btn-success py-0 ms-1">{{ status }}</button>
+                                            {% else %}
+                                                <a href="#" class="btn btn-sm btn-primary py-0 ms-1">{{ status == 'IN_ORBIT' ? 'ORBIT' : 'DOCK' }}</a>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex mb-1">
+                                    <span>FlightMode:</span>
+                                    {% for flightMode in ['DRIFT', 'STEALTH', 'CRUISE', 'BURN'] %}
+                                        {% if ship.nav.flightMode == flightMode %}
+                                            <button class="btn btn-sm btn-success py-0 ms-1">{{ flightMode }}</button>
+                                        {% else %}
+                                            <a href="#" class="btn btn-sm btn-primary py-0 ms-1">{{ flightMode }}</a>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <div>Crew: {{ ship.crew.current }} / {{ ship.crew.capacity }}</div>
+                                <div>Frame condition: {{ ship.frame.condition|round(3, 'floor') * 100 }}%</div>
+                                <div>Reactor condition: {{ ship.reactor.condition|round(3, 'floor') * 100 }}%</div>
+                                <div>Engine condition: {{ ship.engine.condition|round(3, 'floor') * 100 }}%</div>
+                                {% if ship.cooldown.remainingSeconds %}
+                                    <div>Cooldown: <span class="cooldown">{{ ship.cooldown.remainingSeconds }}</span> seconds</div>
+                                {% endif %}
+                                <div class="d-flex mb-1">
+                                    <button class="btn btn-sm btn-primary py-0" data-bs-toggle="collapse" data-bs-target="#modules-{{ loop.index0 }}" aria-expanded="false" aria-controls="modules-{{ loop.index0 }}">Modules</button>
+                                    <button class="btn btn-sm btn-primary py-0 ms-1" data-bs-toggle="collapse" data-bs-target="#mounts-{{ loop.index0 }}" aria-expanded="false" aria-controls="mounts-{{ loop.index0 }}">Mounts</button>
+                                </div>
+                                <ul id="modules-{{ loop.index0 }}" class="collapse mb-0">
                                     {% for module in ship.modules %}
                                         <li>{{ module.symbol }}</li>
                                     {% endfor %}
                                 </ul>
-                                <ul id="mounts-{{ loop.index0 }}" class="collapse mt-2 mb-0">
+                                <ul id="mounts-{{ loop.index0 }}" class="collapse mb-0">
                                     {% for mount in ship.mounts %}
                                         <li>{{ mount.symbol }}</li>
                                     {% endfor %}
                                 </ul>
-                                <hr>
-                                <span>Status: {{ ship.nav.status }}</span><br>
-                                {% if ship.nav.status == 'IN_TRANSIT' %}
-                                    <span>Arrival: {{ ship.nav.route.arrival|date('d.m.Y H:i:s') }}</span><br>
-                                {% endif %}
-                                <span>
-                                    Flight mode:
-                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'CRUISE' %}btn-success{% else %}btn-primary{% endif %} py-0 me-2" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'CRUISE'}) }}">CRUISE</a>
-                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'BURN' %}btn-success{% else %}btn-primary{% endif %} py-0 me-2" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'BURN'}) }}">BURN</a>
-                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'DRIFT' %}btn-success{% else %}btn-primary{% endif %} py-0 me-2" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'DRIFT'}) }}">DRIFT</a>
-                                    <a class="btn btn-sm {% if ship.nav.flightMode == 'STEALTH' %}btn-success{% else %}btn-primary{% endif %} py-0" href="{{ path('app.ship.nav', {'shipSymbol': ship.symbol, 'flightMode': 'STEALTH'}) }}">STEALTH</a>
-                                </span><br>
-                                <span>Fuel level: {{ ship.fuel.current }} / {{ ship.fuel.capacity }}</span><br>
-                                <span>Location: {{ ship.nav.waypointSymbol }}</span><br>
-                                {% if ship.cooldown.expiration|default %}
-                                    <span data-cooldown="{{ ship.cooldown.remainingSeconds }}">Cooldown: {{ ship.cooldown.expiration|date('d.m.Y H:i:s') }} ({{ ship.cooldown.remainingSeconds }}s)</span><br>
-                                {% endif %}
-                                <hr>
-                                <span>Frame condition: {{ ship.frame.condition|round(3, 'floor') }}</span><br>
-                                <span>Reactor condition: {{ ship.reactor.condition|round(3, 'floor') }}</span><br>
-                                <span>Engine condition: {{ ship.engine.condition|round(3, 'floor') }}</span>
+                                <div class="d-flex mb-1">
+                                    <span>Fuel: {{ ship.fuel.current }} / {{ ship.fuel.capacity }}</span>
+                                    <a href="{{ path('app.ship.refuel', {'shipSymbol': ship.symbol}) }}" class="btn btn-sm btn-primary py-0 ms-1">Refuel</a>
+                                </div>
                                 <hr>
                                 <span>Cargo: {{ ship.cargo.units }} / {{ ship.cargo.capacity }}</span><br>
                                 <ul class="mb-0">

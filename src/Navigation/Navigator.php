@@ -18,7 +18,10 @@ class Navigator extends AbstractController
 {
     use ApiShorthands;
 
-    private ?System $system;
+    public ?System $system {
+        get => $this->system;
+    }
+
     /** @var array<string> */
     private array $fuelWaypoints;
 
@@ -34,14 +37,9 @@ class Navigator extends AbstractController
         $this->fuelWaypoints = array_map(fn (array $waypoint) => $waypoint['waypointSymbol'], $fuelWaypoints);
     }
 
-    public function getSystem(): ?System
-    {
-        return $this->system;
-    }
-
     public function initializeSystem(string $systemSymbol): void
     {
-        $this->system = $this->getSystemApi()->get($systemSymbol);
+        $this->system = $this->systemApi->get($systemSymbol);
 
         foreach ($this->system->waypoints as $waypoint) {
             if (!$this->waypointStorage->get($waypoint->symbol)) {
@@ -54,7 +52,7 @@ class Navigator extends AbstractController
     {
         foreach ($this->waypointStorage->list() as $waypoint) {
             if (!$waypoint['scanned']) {
-                $waypointResponse = $this->getSystemApi()->waypoint(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
+                $waypointResponse = $this->systemApi->waypoint(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
 
                 $data = [
                     'waypointSymbol' => $waypoint['waypointSymbol'],
@@ -67,7 +65,7 @@ class Navigator extends AbstractController
                 ];
 
                 try {
-                    $marketResponse = $this->getSystemApi()->market(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
+                    $marketResponse = $this->systemApi->market(Navigation::getSystem($waypoint['waypointSymbol']), Navigation::getWaypoint($waypoint['waypointSymbol']));
 
                     $data['exports'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exports);
                     $data['exchange'] = array_map(fn (array $tradeGood) => $tradeGood['symbol'], $marketResponse->exchange);

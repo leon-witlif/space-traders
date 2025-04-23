@@ -7,6 +7,7 @@ namespace App\SpaceTrader\Endpoint;
 use App\SpaceTrader\ApiClient;
 use App\SpaceTrader\ApiEndpoint;
 use App\SpaceTrader\Exception\ShipRefuelException;
+use App\SpaceTrader\Exception\ShipSellException;
 use App\SpaceTrader\Struct\Cooldown;
 use App\SpaceTrader\Struct\Ship;
 use App\SpaceTrader\Struct\ShipCargo;
@@ -16,7 +17,7 @@ use Monolog\Level;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 
-class ShipApi implements ApiEndpoint
+class FleetApi implements ApiEndpoint
 {
     private readonly LoggerInterface $logger;
 
@@ -148,6 +149,7 @@ class ShipApi implements ApiEndpoint
     public function sell(string $token, string $shipSymbol, string $symbol, int $units): void
     {
         $this->apiClient->clearRequestCache('ship-list', "ship-$shipSymbol");
+        $this->apiClient->throwException(ShipSellException::class);
 
         $data = [
             'symbol' => $symbol,

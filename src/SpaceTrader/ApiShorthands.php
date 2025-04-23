@@ -7,39 +7,33 @@ namespace App\SpaceTrader;
 use App\SpaceTrader\Endpoint\AgentApi;
 use App\SpaceTrader\Endpoint\ContractApi;
 use App\SpaceTrader\Endpoint\FactionApi;
+use App\SpaceTrader\Endpoint\FleetApi;
 use App\SpaceTrader\Endpoint\GlobalApi;
-use App\SpaceTrader\Endpoint\ShipApi;
 use App\SpaceTrader\Endpoint\SystemApi;
 
 trait ApiShorthands
 {
-    protected function getGlobalApi(): GlobalApi
-    {
-        return $this->apiRegistry->getApi(GlobalApi::class);
+    protected GlobalApi $globalApi {
+        get => $this->apiRegistry->getApi(GlobalApi::class);
     }
 
-    protected function getAgentApi(): AgentApi
-    {
-        return $this->apiRegistry->getApi(AgentApi::class);
+    protected AgentApi $agentApi {
+        get => $this->apiRegistry->getApi(AgentApi::class);
     }
 
-    protected function getContractApi(): ContractApi
-    {
-        return $this->apiRegistry->getApi(ContractApi::class);
+    protected ContractApi $contractApi {
+        get => $this->apiRegistry->getApi(ContractApi::class);
     }
 
-    protected function getShipApi(): ShipApi
-    {
-        return $this->apiRegistry->getApi(ShipApi::class);
+    protected FactionApi $factionApi {
+        get => $this->apiRegistry->getApi(FactionApi::class);
     }
 
-    protected function getSystemApi(): SystemApi
-    {
-        return $this->apiRegistry->getApi(SystemApi::class);
+    protected FleetApi $fleetApi {
+        get => $this->apiRegistry->getApi(FleetApi::class);
     }
 
-    protected function getFactionApi(): FactionApi
-    {
-        return $this->apiRegistry->getApi(FactionApi::class);
+    protected SystemApi $systemApi {
+        get => $this->apiRegistry->getApi(SystemApi::class);
     }
 }

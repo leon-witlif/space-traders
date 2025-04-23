@@ -16,8 +16,8 @@ final class FindAsteroidTask extends Task
 
     public function execute(string $agentToken, mixed &$output): void
     {
-        $agent = $this->getAgentApi()->get($agentToken, true);
-        $system = $this->getSystemApi()->get(Navigation::getSystem($agent->headquarters), true);
+        $agent = $this->agentApi->get($agentToken, true);
+        $system = $this->systemApi->get(Navigation::getSystem($agent->headquarters), true);
 
         $asteroid = array_find($system->waypoints, fn (SystemWaypoint $waypoint) => $waypoint->type === $this->type);
 

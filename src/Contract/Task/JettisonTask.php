@@ -17,11 +17,11 @@ final class JettisonTask extends Task
 
     public function execute(string $agentToken, mixed &$output): void
     {
-        $ship = $this->getShipApi()->get($agentToken, $this->shipSymbol, true);
+        $ship = $this->fleetApi->get($agentToken, $this->shipSymbol, true);
 
         foreach ($ship->cargo->inventory as $cargoItem) {
             if (!in_array($cargoItem->symbol, $this->whitelist)) {
-                $this->getShipApi()->jettison(
+                $this->fleetApi->jettison(
                     $agentToken,
                     $this->shipSymbol,
                     $cargoItem->symbol,

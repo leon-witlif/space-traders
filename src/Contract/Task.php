@@ -15,18 +15,14 @@ abstract class Task implements \JsonSerializable
     public ?Task $previous;
     public ?Task $next;
 
-    protected readonly Contract $contract;
-    protected readonly ApiRegistry $apiRegistry;
-
     public bool $finished;
 
-    private function __construct(Contract $contract, ApiRegistry $apiRegistry)
-    {
+    private function __construct(
+        protected readonly Contract $contract,
+        protected readonly ApiRegistry $apiRegistry,
+    ) {
         $this->previous = null;
         $this->next = null;
-
-        $this->contract = $contract;
-        $this->apiRegistry = $apiRegistry;
 
         $this->finished = false;
     }

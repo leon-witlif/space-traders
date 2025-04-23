@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Contract;
+namespace App\Contract\Contract;
 
+use App\Contract\Contract;
+use App\Contract\Task;
 use App\Contract\Task\DeliverTask;
 use App\Contract\Task\ExtractTask;
 use App\Contract\Task\FindAsteroidTask;
@@ -16,6 +18,8 @@ use App\SpaceTrader\Struct\ShipCargoItem;
 
 class Procurement extends Contract
 {
+    private const string MARKETPLACE = 'X1-BD23-EB5Z';
+
     public function __construct(
         public readonly string $agentToken,
         public readonly string $contractId,
@@ -30,21 +34,21 @@ class Procurement extends Contract
         switch ($task::class) {
             case FindAsteroidTask::class:
                 if ($task->finished && $output) {
-                    $task->insertAfter($this->initializeTask(new NavigateToTask($this->shipSymbol, $output)));
+                    $task->insertAfter($this->invokeTaskParent(new NavigateToTask($this->shipSymbol, $output)));
                 }
                 break;
             case RefuelTask::class:
                 if ($task->finished) {
-                    $ship = $this->getShipApi()->get($this->agentToken, $this->shipSymbol, true);
+                    $ship = $this->fleetApi->get($this->agentToken, $this->shipSymbol, true);
 
-                    if ($ship->nav->waypointSymbol === 'X1-FQ80-ZD5D') {
-                        $task->insertAfter($this->initializeTask(new ExtractTask($this->shipSymbol)));
+                    if ($ship->nav->waypointSymbol === self::MARKETPLACE) {
+                        $task->insertAfter($this->invokeTaskParent(new ExtractTask($this->shipSymbol)));
                     }
                 }
                 break;
             case ExtractTask::class:
                 if ($output) {
-                    $contract = $this->getContractApi()->get($this->agentToken, $this->contractId, true);
+                    $contract = $this->contractApi->get($this->agentToken, $this->contractId, true);
                     $contractDeliverGood = $contract->terms->deliver[0];
 
                     $shipCargo = $output['cargo'];
@@ -55,11 +59,11 @@ class Procurement extends Contract
                         if ($this->wouldShipCargoFulfillContract($shipCargoItem, $contractDeliverGood)) {
                             $task->finished = true;
 
-                            $agent = $this->getAgentApi()->get($this->agentToken, true);
+                            $agent = $this->agentApi->get($this->agentToken, true);
 
-                            $navigateToDeliverTask = $this->initializeTask(new NavigateToTask($this->shipSymbol, $contract->terms->deliver[0]->destinationSymbol));
-                            $deliverTask = $this->initializeTask(new DeliverTask($contract->id, $this->shipSymbol, [$contract->terms->deliver[0]->tradeSymbol]));
-                            $navigateToHeadquartersTask = $this->initializeTask(new NavigateToTask($this->shipSymbol, $agent->headquarters));
+                            $navigateToDeliverTask = $this->invokeTaskParent(new NavigateToTask($this->shipSymbol, $contract->terms->deliver[0]->destinationSymbol));
+                            $deliverTask = $this->invokeTaskParent(new DeliverTask($contract->id, $this->shipSymbol, [$contract->terms->deliver[0]->tradeSymbol]));
+                            $navigateToHeadquartersTask = $this->invokeTaskParent(new NavigateToTask($this->shipSymbol, $agent->headquarters));
 
                             $task->insertAfter($navigateToDeliverTask);
                             $navigateToDeliverTask->insertAfter($deliverTask);
@@ -71,12 +75,12 @@ class Procurement extends Contract
                         if ($this->isShipCargoItemExceedingThreshold($shipCargoItem, $shipCargo)) {
                             $task->finished = true;
 
-                            $ship = $this->getShipApi()->get($this->agentToken, $this->shipSymbol, true);
+                            $ship = $this->fleetApi->get($this->agentToken, $this->shipSymbol, true);
                             $extractWaypoint = $ship->nav->waypointSymbol;
 
-                            $navigateToDeliverTask = $this->initializeTask(new NavigateToTask($this->shipSymbol, $contract->terms->deliver[0]->destinationSymbol));
-                            $deliverTask = $this->initializeTask(new DeliverTask($contract->id, $this->shipSymbol, [$contract->terms->deliver[0]->tradeSymbol]));
-                            $navigateToExtractTask = $this->initializeTask(new NavigateToTask($this->shipSymbol, $extractWaypoint));
+                            $navigateToDeliverTask = $this->invokeTaskParent(new NavigateToTask($this->shipSymbol, $contract->terms->deliver[0]->destinationSymbol));
+                            $deliverTask = $this->invokeTaskParent(new DeliverTask($contract->id, $this->shipSymbol, [$contract->terms->deliver[0]->tradeSymbol]));
+                            $navigateToExtractTask = $this->invokeTaskParent(new NavigateToTask($this->shipSymbol, $extractWaypoint));
 
                             $task->insertAfter($navigateToDeliverTask);
                             $navigateToDeliverTask->insertAfter($deliverTask);
@@ -89,8 +93,8 @@ class Procurement extends Contract
                     if ($this->isShipCargoFull($shipCargo)) {
                         $task->finished = true;
 
-                        $jettisonTask = $this->initializeTask(new JettisonTask($this->shipSymbol, [$contractDeliverGood->tradeSymbol]));
-                        $extractTask = $this->initializeTask(new ExtractTask($this->shipSymbol));
+                        $jettisonTask = $this->invokeTaskParent(new JettisonTask($this->shipSymbol, [$contractDeliverGood->tradeSymbol]));
+                        $extractTask = $this->invokeTaskParent(new ExtractTask($this->shipSymbol));
 
                         $task->insertAfter($jettisonTask);
                         $jettisonTask->insertAfter($extractTask);
@@ -99,11 +103,11 @@ class Procurement extends Contract
                 break;
             case NavigateToTask::class:
                 if ($task->finished) {
-                    $agent = $this->getAgentApi()->get($this->agentToken, true);
-                    $ship = $this->getShipApi()->get($this->agentToken, $this->shipSymbol, true);
+                    $agent = $this->agentApi->get($this->agentToken, true);
+                    $ship = $this->fleetApi->get($this->agentToken, $this->shipSymbol, true);
 
                     if ($ship->nav->waypointSymbol === $agent->headquarters) {
-                        $this->getContractApi()->fulfill($this->agentToken, $this->contractId);
+                        $this->contractApi->fulfill($this->agentToken, $this->contractId);
                     }
                 }
                 break;

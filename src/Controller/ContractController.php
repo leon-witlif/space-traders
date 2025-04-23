@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Contract\ContractFactory;
-use App\Contract\Procurement;
+use App\Contract\Contract\Procurement;
+use App\Contract\Invoker\ContractParentInvoker;
 use App\Contract\Task\FindAsteroidTask;
 use App\Loader\AgentTokenProvider;
 use App\SpaceTrader\ApiRegistry;
@@ -23,7 +23,7 @@ class ContractController extends AbstractController
         private readonly ApiRegistry $apiRegistry,
         private readonly AgentTokenProvider $agentTokenProvider,
         private readonly ContractStorage $contractStorage,
-        private readonly ContractFactory $contractFactory,
+        private readonly ContractParentInvoker $contractParentInvoker,
     ) {
     }
 
@@ -32,12 +32,15 @@ class ContractController extends AbstractController
     {
         $agentToken = $this->agentTokenProvider->getAgentToken();
 
-        $this->getContractApi()->accept($agentToken, $contractId);
+        $this->contractApi->accept($agentToken, $contractId);
 
-        $ship = $this->getShipApi()->list($agentToken)[0];
+        $ship = $this->fleetApi->list($agentToken)[0];
 
-        $contract = $this->contractFactory->createContract(Procurement::class, $agentToken, $contractId, $ship->symbol);
-        $contract->setRootTask($contract->initializeTask(new FindAsteroidTask('ENGINEERED_ASTEROID')));
+        $contract = new Procurement($agentToken, $contractId, $ship->symbol);
+        $this->contractParentInvoker->invoke($contract);
+
+        // TODO: Check if we have to call Contract::invokeTaskParent here
+        $contract->setRootTask(new FindAsteroidTask('ENGINEERED_ASTEROID'));
 
         $this->contractStorage->add(
             [
@@ -47,29 +50,6 @@ class ContractController extends AbstractController
                 'tasks' => $contract,
             ]
         );
-
-        return $this->redirectToRoute('app.agent.detail');
-    }
-
-    #[Route('/contract/{contractId}/run', 'app.contract.run')]
-    public function runAction(string $contractId): Response
-    {
-        /*
-        $acceptedContract = $this->contractStorage->get($contractId);
-        $agentToken = $acceptedContract['agentToken'];
-
-        $procurement = new Procurement($this->agentApi, $this->contractApi, $this->shipApi, $this->systemApi, $acceptedContract['data']);
-        $procurement->run($agentToken, $contractId, $acceptedContract['shipSymbol']);
-
-        $contract = $this->contractApi->get($agentToken, $contractId);
-
-        if ($contract->fulfilled) {
-            $this->contractStorage->remove($this->contractStorage->key($contractId));
-        } else {
-            $data = ['agentToken' => $agentToken, 'contractId' => $contractId, 'shipSymbol' => $acceptedContract['shipSymbol'], 'data' => $procurement->getData()];
-            $this->contractStorage->update($this->contractStorage->key($contractId), $data);
-        }
-        */
 
         return $this->redirectToRoute('app.agent.detail');
     }

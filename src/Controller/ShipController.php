@@ -27,8 +27,8 @@ class ShipController extends AbstractController
     {
         $waypointSymbol = $request->request->all()['form']['waypointSymbol'];
 
-        $this->getShipApi()->orbit($this->agentTokenProvider->getAgentToken(), $shipSymbol);
-        $this->getShipApi()->navigate($this->agentTokenProvider->getAgentToken(), $shipSymbol, $waypointSymbol);
+        $this->fleetApi->orbit($this->agentTokenProvider->getAgentToken(), $shipSymbol);
+        $this->fleetApi->navigate($this->agentTokenProvider->getAgentToken(), $shipSymbol, $waypointSymbol);
 
         return $this->redirectToRoute('app.agent.detail');
     }
@@ -39,7 +39,7 @@ class ShipController extends AbstractController
         if ($request->getSession()->has('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $this->getShipApi()->nav($agentToken, $shipSymbol, $flightMode);
+            $this->fleetApi->nav($agentToken, $shipSymbol, $flightMode);
 
             return $this->redirectToRoute('app.agent.detail');
         }
@@ -53,8 +53,8 @@ class ShipController extends AbstractController
         if ($request->getSession()->get('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $this->getShipApi()->dock($agentToken, $shipSymbol);
-            $this->getShipApi()->refuel($agentToken, $shipSymbol);
+            $this->fleetApi->dock($agentToken, $shipSymbol);
+            $this->fleetApi->refuel($agentToken, $shipSymbol);
 
             return $this->redirectToRoute('app.agent.detail');
         }
@@ -68,7 +68,7 @@ class ShipController extends AbstractController
         if ($request->getSession()->has('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $this->getShipApi()->negotiate($agentToken, $shipSymbol);
+            $this->fleetApi->negotiate($agentToken, $shipSymbol);
 
             return $this->redirectToRoute('app.agent.detail');
         }
@@ -82,7 +82,7 @@ class ShipController extends AbstractController
         if ($request->getSession()->has('agentToken')) {
             $agentToken = $request->getSession()->get('agentToken');
 
-            $this->getShipApi()->repair($agentToken, $shipSymbol);
+            $this->fleetApi->repair($agentToken, $shipSymbol);
 
             return $this->redirectToRoute('app.agent.detail');
         }

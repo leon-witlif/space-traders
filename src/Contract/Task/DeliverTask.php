@@ -19,16 +19,16 @@ final class DeliverTask extends Task
     public function execute(string $agentToken, mixed &$output): void
     {
         if ($this->previous::class !== DockTask::class) {
-            $this->insertBefore($this->contract->initializeTask(new DockTask($this->shipSymbol)));
+            $this->insertBefore($this->contract->invokeTaskParent(new DockTask($this->shipSymbol)));
 
             return;
         }
 
-        $ship = $this->getShipApi()->get($agentToken, $this->shipSymbol, true);
+        $ship = $this->fleetApi->get($agentToken, $this->shipSymbol, true);
 
         foreach ($ship->cargo->inventory as $cargoItem) {
             if (in_array($cargoItem->symbol, $this->deliverGoods)) {
-                $this->getContractApi()->deliver(
+                $this->contractApi->deliver(
                     $agentToken,
                     $this->contractId,
                     $this->shipSymbol,

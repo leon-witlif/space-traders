@@ -47,7 +47,7 @@ class AuthController extends AbstractController
         if ($registerAgentForm->isSubmitted() && $registerAgentForm->isValid()) {
             $data = $registerAgentForm->getData();
 
-            $agentToken = $this->getGlobalApi()->register($data['faction'], $data['symbol'])['token'];
+            $agentToken = $this->globalApi->register($data['faction'], $data['symbol'])['token'];
 
             $this->agentStorage->add(['token' => $agentToken, 'symbol' => $data['symbol']]);
         }
